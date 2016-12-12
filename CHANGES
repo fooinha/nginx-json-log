@@ -1,3 +1,7 @@
+Changes with ngx-kasha 0.0.1                                        14 Dec 2016
+
+    *) Log output to Kafka topic.
+
 Changes with ngx-kasha 0.0.1                                        11 Dec 2016
 
     *) The first public version.

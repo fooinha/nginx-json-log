@@ -1,7 +1,7 @@
 # ngx-kasha
 
 
-nginx module for advanced per location logging - (aka kasha 🍲)
+nginx module for advanced per location logging - aka kasha (🍲)
 
 ## Description
 
@@ -12,7 +12,6 @@ The output format is configurable.
 ### Configuration
 
 Each logging configuration is based on a kasha_recipe. (🍲)
-
 
 A kasha recipe is a ';' separated list of items to include in the logging preparation.
 
@@ -30,7 +29,10 @@ For this, known or previously setted variables, can be used by using the '$' bef
 Common HTTP nginx builtin variables like $uri, or any other variable set by other handler modules can be used.
 
 The output is sent to the location specified by the first kasha_recipe argument.
-For now, the only supported location is "file:".
+The possible output locations are:
+
+* "file:" - The logging location will be a local filesystem file.
+* "kafka:" - The logging location will be a Kafka topic.
 
 #### Example Configuration
 
@@ -38,23 +40,22 @@ For now, the only supported location is "file:".
 ##### A simple configuration example
 
 ```yaml
-	kasha_recipe file:/tmp/log '
-		src.ip                      $remote_addr;
-		src.port                    $remote_port;
-		dst.ip                      $server_addr;
-		dst.port                    $server_port;
-		_date                       $time_iso8601;
-		r:_real                     1.1;
-		i:_int                      2016;
-		i:_status                   $status;
-		_literal                    root;
-		comm.proto                  http;
-		comm.http.method            $request_method;
-		comm.http.path              $uri;
-		comm.http.host              $host;
-		comm.http.server_name       $server_name;
-';
-
+     kasha_recipe file:/tmp/log '
+        src.ip                      $remote_addr;
+        src.port                    $remote_port;
+        dst.ip                      $server_addr;
+        dst.port                    $server_port;
+        _date                       $time_iso8601;
+        r:_real                     1.1;
+        i:_int                      2016;
+        i:_status                   $status;
+        _literal                    root;
+        comm.proto                  http;
+        comm.http.method            $request_method;
+        comm.http.path              $uri;
+        comm.http.host              $host;
+        comm.http.server_name       $server_name;
+     ';
 ```
 
 This will produce the following JSON line to '/tmp/log' file .
@@ -121,14 +122,77 @@ To ease reading, it's shown here formatted with newlines.
 }
 ```
 
-
 ### Directives
 
-* Syntax: kasha_recipe location { recipe };
-* Default: 	—
-* Context: http
+---
+* Syntax: **kasha_recipe** _location_ { _recipe_ };
+* Default: —
+* Context: http location
 
-The 'file:' it's the only valid location prefix, and determines that the logging location will be a local filesystem file.
+###### _location_ ######
+
+Specifies the location for the output...
+
+The output location type should be prefixed with supported location types. ( **file:** or **kafka:** )
+
+For a **file:** type the value part will be a local file name. e.g. **file:**/tmp/log
+
+For a **kafka:** type the value part will be the topic name. e.g. **kafka:** topic
+
+The kafka output only happens if a list of brokers is defined by **kasha_kafka_brokers** directive.
+
+###### _recipe_ ######
+
+See details above.
+
+---
+
+* Syntax: **"kasha_kafka_partition** _compression_codec_;
+* Default: RD_KAFKA_PARTITION_UA
+* Context: http local
+
+---
+
+* Syntax: **kasha_kafka_brokers** list of brokers separated by spaces;
+* Default: —
+* Context: http main
+
+---
+
+* Syntax: **kasha_kafka_client_id** _id_;
+* Default: kasha
+* Context: http main
+
+---
+
+* Syntax: **"kasha_kafka_compression** _compression_codec_;
+* Default: snappy
+* Context: http main
+
+---
+
+* Syntax: **"kasha_kafka_log_level** _numeric_log_level_;
+* Default: 6
+* Context: http main
+
+---
+
+* Syntax: **"kasha_kafka_max_retries** _numeric_;
+* Default: 0
+* Context: http main
+
+---
+
+* Syntax: **"kasha_kafka_buffer_max_messages** _numeric_;
+* Default: 100000
+* Context: http main
+
+---
+
+* Syntax: **"kasha_kafka_backoff_ms** _numeric_;
+* Default: 10
+* Context: http main
+
 
 
 ### Build
@@ -136,11 +200,12 @@ The 'file:' it's the only valid location prefix, and determines that the logging
 #### Dependencies
 
 * [libjansson](http://www.digip.org/jansson/)
+* [librdkafka](https://github.com/edenhill/librdkafka)
 
 For Ubuntu or Debian install development packages.
 
 ```bash
-$ sudo apt-get install libjansson-dev
+$ sudo apt-get install libjansson-dev librdkafka-dev
 
 ```
 
@@ -161,5 +226,4 @@ $ make && make install
 This was done over the weekend as a proof of concept, and it also lacks unit tests.
 
 So there's no guarantee of success. It most probably blow up when running in real life scenarios.
-
 
