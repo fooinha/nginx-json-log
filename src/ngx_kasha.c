@@ -82,11 +82,10 @@ struct ngx_kasha_main_kafka_conf_s {
     size_t                 valid_brokers;        /* number of brokers correctly added */
     ngx_str_t              client_id;            /* kafka client id */
     ngx_str_t              compression;          /* kafka communication compression */
-    ngx_int_t              log_level;            /* kafka client log level */
-    ngx_int_t              max_retries;          /* kafka client max retries */
-    ngx_int_t              buffer_max_messages;  /* max. num of messages to have at send buffer */
+    ngx_uint_t             log_level;            /* kafka client log level */
+    ngx_uint_t             max_retries;          /* kafka client max retries */
+    ngx_uint_t             buffer_max_messages;  /* max. num of messages to have at send buffer */
     ngx_msec_t             backoff_ms;           /* ms to wait for ... */
-
 };
 
 typedef struct ngx_kasha_main_kafka_conf_s ngx_kasha_main_kafka_conf_t;
@@ -238,26 +237,82 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
     ngx_kasha_main_conf_t  *conf = ngx_http_cycle_get_module_main_conf(cycle, ngx_kasha_module);
 
     /* kafka */
+    /* - default values - */
+    static ngx_str_t  kasha_kafka_compression_default_value          = ngx_string("snappy");
+    static ngx_str_t  kasha_kafka_client_id_default_value            = ngx_string("ngx_kasha");
+    static ngx_int_t  kasha_kafka_log_level_default_value            = 6;
+    static ngx_int_t  kasha_kafka_max_retries_default_value          = 0;
+    static ngx_int_t  kasha_kafka_buffer_max_messages_default_value  = 100000;
+    static ngx_msec_t kasha_kafka_backoff_ms_default_value     = 10;
+
     conf->kafka.rkc = kasha_kafka_conf_new(cycle->pool);
     if (! conf->kafka.rkc) {
         return NGX_ERROR;
     }
 
     /* configure compression */
-    if(! KASHA_STR_IS_EMPTY(conf->kafka.compression)) {
-        kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc, conf_compression_codec_key, &conf->kafka.compression);
+    if ((void*) conf->kafka.compression.data == NULL) {
+        kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc,
+                                 conf_compression_codec_key,
+                                 &kasha_kafka_compression_default_value);
+    } else {
+        kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc,
+                                 conf_compression_codec_key,
+                                 &conf->kafka.compression);
     }
 
-    /* configure max messages, max retries, retry backoff */
-    kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc, conf_buffer_max_msgs_key, conf->kafka.buffer_max_messages);
-    kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc, conf_max_retries_key, conf->kafka.max_retries);
-    kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc, conf_retry_backoff_ms_key, conf->kafka.backoff_ms);
+    /* configure max messages, max retries, retry backoff default values if unset*/
+    if (conf->kafka.buffer_max_messages == NGX_CONF_UNSET_UINT) {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_buffer_max_msgs_key,
+                                 kasha_kafka_buffer_max_messages_default_value);
+    } else {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_buffer_max_msgs_key,
+                                 conf->kafka.buffer_max_messages);
+    }
 
-    /* configure client id */
-    kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc, conf_client_id, &conf->kafka.client_id);
+    if (conf->kafka.max_retries == NGX_CONF_UNSET_UINT) {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_max_retries_key,
+                                 kasha_kafka_max_retries_default_value);
+    } else {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_max_retries_key,
+                                 conf->kafka.max_retries);
+    }
+    if (conf->kafka.backoff_ms == NGX_CONF_UNSET_MSEC) {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_retry_backoff_ms_key,
+                                 kasha_kafka_backoff_ms_default_value);
+    } else {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_retry_backoff_ms_key,
+                                 conf->kafka.backoff_ms);
+    }
 
-    /* set confuration log level */
-    kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc, conf_log_level_key, conf->kafka.log_level);
+    /* configure default client id if not set*/
+    if ((void*) conf->kafka.client_id.data == NULL) {
+        kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc,
+                                 conf_client_id,
+                                 &kasha_kafka_client_id_default_value);
+    } else {
+        kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc,
+                                 conf_client_id,
+                                 &conf->kafka.client_id);
+    }
+
+    /* configure default log level if not set*/
+    if (conf->kafka.log_level == NGX_CONF_UNSET_UINT) {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_log_level_key,
+                                 kasha_kafka_log_level_default_value
+                                 );
+    } else {
+        kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
+                                 conf_log_level_key,
+                                 conf->kafka.log_level);
+    }
 
     //TODO: if debug mode
     /* configure debug */
@@ -271,7 +326,11 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
     }
 
     /* set client log level */
-    rd_kafka_set_log_level(conf->kafka.rk, conf->kafka.log_level);
+    if (conf->kafka.log_level == NGX_CONF_UNSET_UINT) {
+        rd_kafka_set_log_level(conf->kafka.rk, kasha_kafka_log_level_default_value);
+    } else {
+        rd_kafka_set_log_level(conf->kafka.rk, conf->kafka.log_level);
+    }
 
     /* configure brokers */
     conf->kafka.valid_brokers = kasha_kafka_add_brokers(cycle->pool, conf->kafka.rk, conf->kafka.brokers);
@@ -554,10 +613,9 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
     if (kv->sink_type == NGX_KASHA_SINK_KAFKA){
         int err = -1;
 
-        if (! klcf->kafka.rkt) {
+        if (klcf->kafka.rkt == NGX_CONF_UNSET_PTR || !klcf->kafka.rkt)  {
             /* create topic conf */
             klcf->kafka.rktc = kasha_kafka_topic_conf_new(r->pool);
-
             if (! klcf->kafka.rktc) {
                 set_json_mem_pool(NULL);
                 return NGX_ERROR;
@@ -569,6 +627,7 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
             /* configure and create topic */
             klcf->kafka.rkt = kasha_kafka_topic_new(r->pool, mcf->kafka.rk, klcf->kafka.rktc, &klcf->kafka.topic);
             if (! klcf->kafka.rkt) {
+                klcf->kafka.rkt = NGX_CONF_UNSET_PTR;
                 set_json_mem_pool(NULL);
                 return NGX_ERROR;
             }
@@ -922,7 +981,7 @@ ngx_kasha_create_loc_conf(ngx_conf_t *cf)
     conf->file = NULL;
 
     /* kafka */
-    conf->kafka.rkt                 = NULL;
+    conf->kafka.rkt                 = NGX_CONF_UNSET_PTR;
     conf->kafka.rktc                = NULL;
     conf->kafka.partition           = RD_KAFKA_PARTITION_UA;
 
@@ -930,11 +989,8 @@ ngx_kasha_create_loc_conf(ngx_conf_t *cf)
     return conf;
 }
 
-/*BUG: FIXME: duplicat set errors */
 static void *
 ngx_kasha_create_main_conf(ngx_conf_t *cf) {
-    static ngx_str_t conf_none_value                 = ngx_string("none");
-    static ngx_str_t conf_ngx_kasha_value            = ngx_string("ngx_kasha");
 
     ngx_kasha_main_conf_t  *conf;
 
@@ -949,12 +1005,12 @@ ngx_kasha_create_main_conf(ngx_conf_t *cf) {
 
     /* default values */
     conf->kafka.brokers             = ngx_array_create(cf->pool, 1 , sizeof(ngx_str_t));
-    conf->kafka.client_id           = conf_ngx_kasha_value;
-    conf->kafka.compression         = conf_none_value;
-    conf->kafka.log_level           = 6;
-    conf->kafka.max_retries         = 1;
-    conf->kafka.buffer_max_messages = 100000;
-    conf->kafka.backoff_ms          = 10;
+    conf->kafka.client_id.data      = NULL;
+    conf->kafka.compression.data    = NULL;
+    conf->kafka.log_level           = NGX_CONF_UNSET_UINT;
+    conf->kafka.max_retries         = NGX_CONF_UNSET_UINT;
+    conf->kafka.buffer_max_messages = NGX_CONF_UNSET_UINT;
+    conf->kafka.backoff_ms          = NGX_CONF_UNSET_UINT;
 
     return conf;
 
@@ -1020,7 +1076,7 @@ failed:
     return NGX_CONF_ERROR;
 }
 
-    static char *
+static char *
 ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                  *value;
