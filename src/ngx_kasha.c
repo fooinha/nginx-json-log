@@ -11,11 +11,10 @@
 #include <assert.h>
 
 #include "ngx_kasha_kafka.h"
+#include "ngx_kasha_str.h"
 
 #define KASHA_VER    "0.0.1"
 
-static const char *  kasha_file_prefix = "file:";
-static const char *  kasha_kafka_prefix = "kafka:";
 #define KASHA_FILE_OUT_LEN (sizeof("file:") - 1)
 #define KASHA_LOG_HAS_FILE_PREFIX(str) \
     (  ngx_strncmp(str->data, kasha_file_prefix, KASHA_FILE_OUT_LEN) ==  0 )
@@ -24,49 +23,54 @@ static const char *  kasha_kafka_prefix = "kafka:";
 #define KASHA_LOG_HAS_KAFKA_PREFIX(str) \
     (  ngx_strncmp(str->data, kasha_kafka_prefix, KASHA_KAFKA_OUT_LEN) ==  0 )
 
+/* output prefixes */
+static const char *kasha_file_prefix              = "file:";
+static const char *kasha_kafka_prefix             = "kafka:";
 
-#define KASHA_STR_IS_EMPTY(s) (s.len == 0)
-
-static ngx_str_t      var_kasha_recipe = ngx_string("kasha_recipe");
-
-static const char *conf_client_id                 = "client.id";
-static const char *conf_compression_codec_key     = "compression.codec";
-static const char *conf_buffer_max_msgs_key       = "queue.buffering.max.messages";
-static const char *conf_max_retries_key           = "message.send.max.retries";
-static const char *conf_retry_backoff_ms_key      = "retry.backoff.ms";
-static const char *conf_log_level_key             = "log_level";
-static const char *conf_debug_key                 = "debug";
-static const char *conf_req_required_acks_key     = "request.required.acks";
-
-static ngx_str_t conf_snappy_value                = ngx_string("snappy");
-static ngx_str_t conf_all_value                   = ngx_string("all");
-static ngx_str_t conf_zero_value                  = ngx_string("0");
-
+static ngx_int_t   kasha_has_kafka_locations      = NGX_CONF_UNSET;
 
 typedef enum {
     NGX_KASHA_SINK_FILE = 0,
     NGX_KASHA_SINK_KAFKA = 1
 } ngx_kasha_sink_e;
 
-typedef struct {
+
+/* configuration kafka constants */
+static const char *conf_client_id_key             = "client.id";
+static const char *conf_compression_codec_key     = "compression.codec";
+static const char *conf_debug_key                 = "debug";
+static const char *conf_log_level_key             = "log_level";
+static const char *conf_max_retries_key           = "message.send.max.retries";
+static const char *conf_buffer_max_msgs_key       = "queue.buffering.max.messages";
+static const char *conf_req_required_acks_key     = "request.required.acks";
+static const char *conf_retry_backoff_ms_key      = "retry.backoff.ms";
+static ngx_str_t   conf_snappy_value              = ngx_string("snappy");
+static ngx_str_t   conf_all_value                 = ngx_string("all");
+static ngx_str_t   conf_zero_value                = ngx_string("0");
+
+/* nginx complex variables */
+static ngx_str_t   var_kasha_recipe               = ngx_string("kasha_recipe");
+
+/* data structures */
+struct ngx_kasha_json_value_s {
     ngx_str_t          label;
     json_t             *node;
-} ngx_kasha_json_value_t;
+};
 
-typedef struct {
+struct ngx_kasha_ingredient_s {
     json_type          type;
     ngx_str_t          *name;
     ngx_http_compile_complex_value_t *ccv;
-} ngx_kasha_ingredient_t;
+};
 
-typedef struct {
+struct ngx_kasha_variable_s {
     ngx_str_t          recipe;
     ngx_str_t          sink;
     ngx_kasha_sink_e   sink_type;
     uint32_t           ingredients_len;
     ngx_array_t        *ingredients;
     ngx_array_t        *mixed;
-} ngx_kasha_variable_t;
+};
 
 struct ngx_kasha_loc_kafka_conf_s {
     rd_kafka_topic_t       *rkt;                 /* kafka topic */
@@ -75,6 +79,7 @@ struct ngx_kasha_loc_kafka_conf_s {
     ngx_int_t              partition;            /* kafka partition */
 };
 
+/* configuration data structures */
 struct ngx_kasha_main_kafka_conf_s {
     rd_kafka_t             *rk;                  /* kafka connection handler */
     rd_kafka_conf_t        *rkc;                 /* kafka configuration */
@@ -88,39 +93,42 @@ struct ngx_kasha_main_kafka_conf_s {
     ngx_msec_t             backoff_ms;           /* ms to wait for ... */
 };
 
+typedef struct ngx_kasha_json_value_s      ngx_kasha_json_value_t;
+typedef struct ngx_kasha_ingredient_s      ngx_kasha_ingredient_t;
+typedef struct ngx_kasha_variable_s        ngx_kasha_variable_t;
 typedef struct ngx_kasha_main_kafka_conf_s ngx_kasha_main_kafka_conf_t;
-typedef struct ngx_kasha_loc_kafka_conf_s ngx_kasha_loc_kafka_conf_t;
+typedef struct ngx_kasha_loc_kafka_conf_s  ngx_kasha_loc_kafka_conf_t;
 
 struct ngx_kasha_main_conf_s {
     ngx_kasha_main_kafka_conf_t kafka;
 };
+
 struct ngx_kasha_loc_conf_s {
     ngx_str_t                      filename;
     ngx_open_file_t                * file;
     ngx_kasha_loc_kafka_conf_t     kafka;
 };
 
-typedef struct ngx_kasha_loc_conf_s ngx_kasha_loc_conf_t;
-typedef struct ngx_kasha_main_conf_s ngx_kasha_main_conf_t;
+typedef struct ngx_kasha_loc_conf_s        ngx_kasha_loc_conf_t;
+typedef struct ngx_kasha_main_conf_s       ngx_kasha_main_conf_t;
 
 /* Configuration callbacks */
 static char *        ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
 static void *        ngx_kasha_create_main_conf(ngx_conf_t *cf);
-
-
 static void *        ngx_kasha_create_loc_conf(ngx_conf_t *cf);
-static ngx_int_t     ngx_kasha_init(ngx_conf_t *cf);
 
 static ngx_int_t     ngx_kasha_init_worker(ngx_cycle_t *cycle);
 static void          ngx_kasha_exit_worker(ngx_cycle_t *cycle);
+
+static ngx_int_t     ngx_kasha_init(ngx_conf_t *cf);
 
 /* json memory functions */
 void ngx_kasha_json_free(void *p);
 void * ngx_kasha_json_malloc(size_t size);
 
 /* memory pool for json objects */
-static ngx_pool_t * json_pool;
-
+static ngx_pool_t * current_pool;
 
 /* kasha commands */
 static ngx_command_t ngx_kasha_commands[] = {
@@ -231,10 +239,16 @@ ngx_module_t ngx_kasha_module = {
     NGX_MODULE_V1_PADDING
 };
 
-/* Initialized stuff for kasha maker */
+/* Initialized stuff per kasha worker.*/
 static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
 
+    if (kasha_has_kafka_locations == NGX_CONF_UNSET ) {
+        return NGX_OK;
+    }
+
     ngx_kasha_main_conf_t  *conf = ngx_http_cycle_get_module_main_conf(cycle, ngx_kasha_module);
+
+    /*TODO - to check if kafka stuff is needed. */
 
     /* kafka */
     /* - default values - */
@@ -243,8 +257,9 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
     static ngx_int_t  kasha_kafka_log_level_default_value            = 6;
     static ngx_int_t  kasha_kafka_max_retries_default_value          = 0;
     static ngx_int_t  kasha_kafka_buffer_max_messages_default_value  = 100000;
-    static ngx_msec_t kasha_kafka_backoff_ms_default_value     = 10;
+    static ngx_msec_t kasha_kafka_backoff_ms_default_value           = 10;
 
+    /* create kafka configuration */
     conf->kafka.rkc = kasha_kafka_conf_new(cycle->pool);
     if (! conf->kafka.rkc) {
         return NGX_ERROR;
@@ -260,7 +275,6 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
                                  conf_compression_codec_key,
                                  &conf->kafka.compression);
     }
-
     /* configure max messages, max retries, retry backoff default values if unset*/
     if (conf->kafka.buffer_max_messages == NGX_CONF_UNSET_UINT) {
         kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
@@ -271,7 +285,6 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
                                  conf_buffer_max_msgs_key,
                                  conf->kafka.buffer_max_messages);
     }
-
     if (conf->kafka.max_retries == NGX_CONF_UNSET_UINT) {
         kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
                                  conf_max_retries_key,
@@ -290,48 +303,43 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
                                  conf_retry_backoff_ms_key,
                                  conf->kafka.backoff_ms);
     }
-
     /* configure default client id if not set*/
     if ((void*) conf->kafka.client_id.data == NULL) {
         kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc,
-                                 conf_client_id,
+                                 conf_client_id_key,
                                  &kasha_kafka_client_id_default_value);
     } else {
         kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc,
-                                 conf_client_id,
+                                 conf_client_id_key,
                                  &conf->kafka.client_id);
     }
-
     /* configure default log level if not set*/
     if (conf->kafka.log_level == NGX_CONF_UNSET_UINT) {
         kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
                                  conf_log_level_key,
-                                 kasha_kafka_log_level_default_value
-                                 );
+                                 kasha_kafka_log_level_default_value);
     } else {
         kasha_kafka_conf_set_int(cycle->pool, conf->kafka.rkc,
                                  conf_log_level_key,
                                  conf->kafka.log_level);
     }
 
-    //TODO: if debug mode
+#if (NGX_DEBUG)
     /* configure debug */
     kasha_kafka_conf_set_str(cycle->pool, conf->kafka.rkc, conf_debug_key, &conf_all_value);
-
+#endif
 
     /* create kafka handler */
     conf->kafka.rk = kasha_kafka_producer_new(cycle->pool, conf->kafka.rkc);
     if (! conf->kafka.rk) {
         return NGX_ERROR;
     }
-
     /* set client log level */
     if (conf->kafka.log_level == NGX_CONF_UNSET_UINT) {
         rd_kafka_set_log_level(conf->kafka.rk, kasha_kafka_log_level_default_value);
     } else {
         rd_kafka_set_log_level(conf->kafka.rk, conf->kafka.log_level);
     }
-
     /* configure brokers */
     conf->kafka.valid_brokers = kasha_kafka_add_brokers(cycle->pool, conf->kafka.rk, conf->kafka.brokers);
     if (!conf->kafka.valid_brokers) {
@@ -339,28 +347,32 @@ static ngx_int_t ngx_kasha_init_worker(ngx_cycle_t *cycle) {
                 "kasha: failed to configure at least a kafka broker.");
         return NGX_OK;
     }
-
     return NGX_OK;
 }
 
-/* Things that a kasha maker must do before go home*/
-void ngx_kasha_exit_worker(ngx_cycle_t *cycle) { }
-
-    static void
-set_json_mem_pool(ngx_pool_t *pool)
-{
-    json_pool = pool;
+/* Things that a kasha maker must do before go home. */
+void
+ngx_kasha_exit_worker(ngx_cycle_t *cycle) {
+    //TODO: cleanup kafka stuff
 }
 
-    static ngx_pool_t *
-get_json_mem_pool()
+/* Helper functions for allocate/free from memory pool for libjsasson. */
+static void
+set_current_mem_pool(ngx_pool_t *pool)
 {
-    return json_pool;
+    current_pool = pool;
+}
+
+static ngx_pool_t *
+get_current_mem_pool()
+{
+    return current_pool;
 }
 
 /* Counts the ingredients based on separator */
 static uint32_t
 ngx_kasha_count(ngx_str_t *value, u_char separator) {
+
     if (!value || !value->data || !value->len)
         return 0;
 
@@ -416,6 +428,7 @@ ngx_kasha_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
             return copy;
         }
     }
+
     /* full copy - single label*/
     copy = ngx_pcalloc(pool, l+1);
     if (copy == NULL) {
@@ -429,6 +442,7 @@ ngx_kasha_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
 /* helper function to find next ingredient level position in path*/
 static u_char *
 ngx_kasha_has_label_pos(u_char *path) {
+
     if (!path)
         return NULL;
 
@@ -439,6 +453,7 @@ ngx_kasha_has_label_pos(u_char *path) {
 /* Find the place to put the new ingredient */
 static json_t *
 ngx_kasha_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t *parent, ngx_str_t *path) {
+
     if (!path || !path->data || !path->len)
         return parent;
 
@@ -454,7 +469,7 @@ ngx_kasha_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t *parent,
             level = ngx_array_push(arr_levels);
             if (!level) {
                 ngx_log_error(NGX_LOG_EMERG, pool->log, 0,
-                        "Failed allocate new kasha level");
+                        "kasha: Failed allocate new kasha level");
                 return NULL;
             }
 
@@ -466,6 +481,14 @@ ngx_kasha_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t *parent,
                 return NULL;
             }
             ngx_copy(level->label.data, path->data, len);
+
+            /* FIX ME - breaks first level*/
+            /*
+            if (ngx_kasha_str_clone(pool, path, &level->label) != NGX_OK) {
+                ngx_log_error(NGX_LOG_EMERG, pool->log, 0,
+                        "kasha: Failed allocate new kasha level");
+            }
+            */
 
             level->node = json_object();
             /* set node to parent */
@@ -481,15 +504,15 @@ ngx_kasha_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t *parent,
 }
 
 /* main soup recipe routine */
-static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
-{
+static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r) {
+
     ngx_kasha_variable_t * kv = NULL;
     ngx_kasha_loc_conf_t  *klcf;
     ngx_kasha_main_conf_t  *mcf;
     /* Json structures */
     json_t * obj;
 
-    set_json_mem_pool(r->pool);
+    set_current_mem_pool(r->pool);
 
     /* Get recipe */
     ngx_http_variable_value_t * recipe =
@@ -585,13 +608,16 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
                     json_integer(val_int));
         } else if (cv[i].type == JSON_REAL) {
             /* it's a real type */
-            u_char *nptr  = ngx_palloc(r->pool, value.len + 1);
-            char *endptr = (char *) nptr + value.len;
-            ngx_cpystrn(nptr, value.data, value.len+1);
-            double val_real = strtold((const char *)nptr, &endptr);
-            json_object_set(parent,
-                    key,
-                    json_real(val_real));
+            //u_char *nptr  = ngx_palloc(r->pool, value.len + 1);
+            u_char *nptr  = ngx_kasha_str_dup(r->pool, &value);
+            if (nptr) {
+                char *endptr = (char *) nptr + value.len;
+                //ngx_cpystrn(nptr, value.data, value.len+1);
+                double val_real = strtold((const char *)nptr, &endptr);
+                json_object_set(parent,
+                        key,
+                        json_real(val_real));
+            }
         }
 
     } // mixed loop
@@ -617,7 +643,7 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
             /* create topic conf */
             klcf->kafka.rktc = kasha_kafka_topic_conf_new(r->pool);
             if (! klcf->kafka.rktc) {
-                set_json_mem_pool(NULL);
+                set_current_mem_pool(NULL);
                 return NGX_ERROR;
             }
 
@@ -628,7 +654,7 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
             klcf->kafka.rkt = kasha_kafka_topic_new(r->pool, mcf->kafka.rk, klcf->kafka.rktc, &klcf->kafka.topic);
             if (! klcf->kafka.rkt) {
                 klcf->kafka.rkt = NGX_CONF_UNSET_PTR;
-                set_json_mem_pool(NULL);
+                set_current_mem_pool(NULL);
                 return NGX_ERROR;
             }
 
@@ -657,44 +683,48 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r)
                     klcf->kafka.partition,
                     errstr);
         } else {
+#if (NGX_DEBUG)
             if (mcf) {
-                ngx_log_error(NGX_LOG_INFO, r->pool->log, 0,
+                ngx_log_error(NGX_LOG_DEBUG, r->pool->log, 0,
                         "kasha: kafka msg:[%s] ERR:[%d] QUEUE:[%d]",
                         txt, err, rd_kafka_outq_len(mcf->kafka.rk));
             }
+#endif
         }
 
     }
-
-    set_json_mem_pool(NULL);
+    set_current_mem_pool(NULL);
     return NGX_OK;
 }
 
 /* allocated json data in memory pool */
 void * ngx_kasha_json_malloc(size_t size) {
-    ngx_pool_t *pool=get_json_mem_pool();
+
+    ngx_pool_t *pool=get_current_mem_pool();
     if (!pool) {
         return NULL;
     }
-    void *mem =  ngx_palloc(json_pool, size);
+    void *mem =  ngx_palloc(pool, size);
     if (!mem) {
-        ngx_log_error(NGX_LOG_EMERG, json_pool->log, 0,
+        ngx_log_error(NGX_LOG_EMERG, pool->log, 0,
                 "Failed to allocate memory at json pool");
     }
     return mem;
 }
+
 /* free json data memory from pool */
 void ngx_kasha_json_free(void *p) {
-    ngx_pool_t *pool=get_json_mem_pool();
+
+    ngx_pool_t *pool=get_current_mem_pool();
     if (!pool) {
         return;
     }
     ngx_pfree(pool, p);
 }
 
-    static ngx_int_t
-ngx_kasha_init(ngx_conf_t *cf)
-{
+static ngx_int_t
+ngx_kasha_init(ngx_conf_t *cf) {
+
     ngx_http_handler_pt        *h;
     ngx_http_core_main_conf_t  *cmcf;
 
@@ -707,18 +737,15 @@ ngx_kasha_init(ngx_conf_t *cf)
     if (h == NULL) {
         return NGX_ERROR;
     }
-
     *h = ngx_kasha_log_handler;
     return NGX_OK;
 }
 
 /* Gets the kasha variable value for this request's location */
-    static ngx_int_t
-ngx_kasha_recipe_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
-        uintptr_t data)
-{
-    ngx_kasha_variable_t *kv = (ngx_kasha_variable_t *) data;
+static ngx_int_t
+ngx_kasha_recipe_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
 
+    ngx_kasha_variable_t *kv = (ngx_kasha_variable_t *) data;
     v->not_found = 0;
     v->escape = 1;
     v->no_cacheable = 1;
@@ -770,7 +797,7 @@ ngx_int_t ngx_kasha_ingredients_cmp(const void *left, const void *right) {
 
 /*TODO: Refactor this obviously.
  *       Messy workbench while preparing ingredients
- *TODO: Log missing errors */
+ */
 static ngx_int_t
 ngx_kasha_read_recipe(ngx_conf_t *cf, ngx_kasha_variable_t *kv, ngx_pool_t *pool) {
 
@@ -964,9 +991,8 @@ ngx_kasha_read_recipe(ngx_conf_t *cf, ngx_kasha_variable_t *kv, ngx_pool_t *pool
     return NGX_OK;
 }
 
-    static void *
-ngx_kasha_create_loc_conf(ngx_conf_t *cf)
-{
+static void *
+ngx_kasha_create_loc_conf(ngx_conf_t *cf) {
 
     ngx_kasha_loc_conf_t  *conf;
 
@@ -976,15 +1002,14 @@ ngx_kasha_create_loc_conf(ngx_conf_t *cf)
     }
 
     /* file */
-    conf->filename.len = 0;
-    conf->filename.data = NULL;
-    conf->file = NULL;
+    conf->filename.len              = 0;
+    conf->filename.data             = NULL;
+    conf->file                      = NULL;
 
     /* kafka */
     conf->kafka.rkt                 = NGX_CONF_UNSET_PTR;
     conf->kafka.rktc                = NULL;
     conf->kafka.partition           = RD_KAFKA_PARTITION_UA;
-
 
     return conf;
 }
@@ -1013,15 +1038,12 @@ ngx_kasha_create_main_conf(ngx_conf_t *cf) {
     conf->kafka.backoff_ms          = NGX_CONF_UNSET_UINT;
 
     return conf;
-
 }
 
-
-/* parses output location ... ony supports file: */
+/* parses output location */
 static char *
 ngx_kasha_recipe_block_parse_output_location(ngx_conf_t *cf,
-        ngx_kasha_loc_conf_t* klcf, ngx_kasha_variable_t *kv,
-        ngx_str_t *log){
+        ngx_kasha_loc_conf_t* klcf, ngx_kasha_variable_t *kv, ngx_str_t *log) {
 
     if (! log ) {
         goto failed;
@@ -1063,6 +1085,11 @@ ngx_kasha_recipe_block_parse_output_location(ngx_conf_t *cf,
         klcf->kafka.topic.len = len;
 
         kv->sink_type = NGX_KASHA_SINK_KAFKA;
+
+        if (kasha_has_kafka_locations == NGX_CONF_UNSET ) {
+            kasha_has_kafka_locations = NGX_OK;
+        }
+
     }
 
     kv->sink = *log;
@@ -1077,8 +1104,8 @@ failed:
 }
 
 static char *
-ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
+ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+
     ngx_str_t                  *value;
     ngx_str_t                  *log;
     ngx_http_variable_t        *v;
@@ -1087,7 +1114,6 @@ ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_kasha_loc_conf_t       *klcf = conf;
 
     value = cf->args->elts;
-
     /* this should never happen, but we check it anyway */
     if (! value) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -1127,3 +1153,4 @@ ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+

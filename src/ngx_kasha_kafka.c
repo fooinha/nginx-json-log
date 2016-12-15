@@ -1,23 +1,5 @@
 #include <ngx_kasha_kafka.h>
-#include <ngx_string.h>
-
-/* duplicates and set as null terminated */
-static u_char *ngx_kasha_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
-
-    u_char  *dst;
-
-    dst = ngx_pnalloc(pool, src->len + 1);
-    if (dst == NULL) {
-        return NULL;
-    }
-
-	ngx_memzero((void*) dst, src->len + 1);
-    ngx_memcpy(dst, src->data, src->len);
-
-	return dst;
-}
-
-
+#include <ngx_kasha_str.h>
 
 /* kafka configuration */
 rd_kafka_topic_conf_t *
