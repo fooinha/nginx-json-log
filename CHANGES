@@ -1,3 +1,14 @@
+Changes with ngx-http-log-json 0.0.2                                26 Mar 2017
+
+    *) upgrade to nginx 1.11.10 support
+    *) parse recipe with pcre regex
+    *) support literal boolean values
+    *) support literal null values
+    *) refactoring functions
+    *) unit tests
+    *) travis script integration
+    *) if= condition argument
+
 Changes with ngx-kasha 0.0.1                                        14 Dec 2016
 
     *) Log output to Kafka topic.

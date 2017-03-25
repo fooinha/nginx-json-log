@@ -1,0 +1,43 @@
+sudo: required
+dist: trusty
+
+os: linux
+
+language: c
+
+compiler:
+  - gcc
+
+cache:
+  apt: true
+  directories:
+
+env:
+  global:
+    - NGINX_PREFIX=/opt/nginx
+    - JOBS=4
+    - PATH=$PATH:$NGINX_PREFIX/sbin
+
+before_install:
+  - sudo apt-get install -qq -y software-properties-common
+  - sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ xenial main universe"
+  - sudo apt-get update -qq -y --fix-missing
+  - sudo apt-get install -qq -y --fix-missing cpanminus librdkafka-dev libjansson-dev mercurial build-essential make clang valgrind libjson-perl
+
+install:
+  - if [ ! -d /opt ]; then mkdir /opt; fi
+  - git clone https://github.com/openresty/test-nginx.git
+  - hg clone http://hg.nginx.org/nginx
+
+script:
+  - cd test-nginx/ && sudo cpanm . && cd ..
+  - sudo cpanm install JSON
+  - cd nginx
+  - auto/configure --with-debug --prefix=$NGINX_PREFIX --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
+  - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo make install > build.log 2>&1 || (cat build.log && exit 1)
+  - cd ..
+  - export PATH=$NGINX_PREFIX/sbin:$PATH
+  - /opt/nginx/sbin/nginx -V
+  - ldd /opt/nginx/sbin/nginx
+  - prove
