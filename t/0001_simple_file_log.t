@@ -35,7 +35,7 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            kasha_recipe file:test.1.json 'literal root;';
+            http_log_json_format file:test.1.json 'literal root;';
      }
 --- request
     GET /kasha
@@ -47,7 +47,7 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            kasha_recipe file:test.2.json '
+            http_log_json_format file:test.2.json '
                b:true         true;
                b:false        false;
                n:null         whatever;

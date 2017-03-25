@@ -1,11 +1,11 @@
-ngx_addon_name=ngx_kasha_module
+ngx_addon_name=ngx_http_log_json_module
 ngx_module_incs=$ngx_addon_dir/src
 
-HTTP_MODULES="$HTTP_MODULES ngx_kasha_module"
+HTTP_MODULES="$HTTP_MODULES ngx_http_log_json_module"
 
 CORE_INCS="$CORE_INCS $ngx_module_incs"
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
- $ngx_addon_dir/src/ngx_kasha.c \
- $ngx_addon_dir/src/ngx_kasha_kafka.c \
- $ngx_addon_dir/src/ngx_kasha_str.c"
+ $ngx_addon_dir/src/ngx_http_log_json_module.c \
+ $ngx_addon_dir/src/ngx_http_log_json_kafka.c \
+ $ngx_addon_dir/src/ngx_http_log_json_str.c"
 CORE_LIBS="$CORE_LIBS -ljansson -lrdkafka"

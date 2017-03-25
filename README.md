@@ -1,5 +1,4 @@
-# ngx-http-log-json
-
+# ngx-http-log-json  [![Build Status](https://travis-ci.org/fooinha/ngx-http-log-json.svg?branch=master)](https://travis-ci.org/fooinha/ngx-http-log-json)
 
 nginx http module for logging in custom json format - aka kasha (🍲)
 
@@ -10,6 +9,21 @@ This module adds to nginx the ability of advanced JSON logging of HTTP requests 
 It's possible to log to a destination ouput any request made to a specific nginx location.
 
 The output format is configurable.
+It also allows to log complex and multi-level JSON documents.
+
+## Use cases
+
+That are many use cases.
+
+Many things can be done by using the access log data.
+
+Having it in JSON format makes easier for integration with other platforms and applications.
+
+A quick example:
+
+
+![](docs/use-case-kafka-logs.png?raw=true)
+
 
 ## Use cases
 
@@ -27,9 +41,9 @@ A quick example:
 
 ### Configuration
 
-Each logging configuration is based on a kasha_recipe. (🍲)
+Each logging configuration is based on a http_log_json_format. (🍲)
 
-A kasha recipe is a ';' separated list of items to include in the logging preparation.
+A http_log_json spec is a ';' separated list of items to include in the logging preparation.
 
 The left hand side part of item will be the JSON Path for the variable name
 The left hand side part can be prefixed with 's:', 'i:' or 'r:', so the JSON encoding type can be controlled.
@@ -45,7 +59,7 @@ For this, known or previously setted variables, can be used by using the '$' bef
 
 Common HTTP nginx builtin variables like $uri, or any other variable set by other handler modules can be used.
 
-The output is sent to the location specified by the first kasha_recipe argument.
+The output is sent to the location specified by the first http_log_json_format argument.
 The possible output locations are:
 
 * "file:" - The logging location will be a local filesystem file.
@@ -57,7 +71,7 @@ The possible output locations are:
 ##### A simple configuration example
 
 ```yaml
-     kasha_recipe file:/tmp/log '
+     http_log_json_format file:/tmp/log '
         src.ip                      $remote_addr;
         src.port                    $remote_port;
         dst.ip                      $server_addr;
@@ -119,7 +133,7 @@ To ease reading, it's shown here formatted with newlines.
                         return "";
         }';
 
-       kasha_recipe file:/tmp/log '
+       http_log_json_format file:/tmp/log '
         comm.http.server_name       $server_name;
         perl.bar                    $bar;
        ';
@@ -144,7 +158,7 @@ To ease reading, it's shown here formatted with newlines.
 ### Directives
 
 ---
-* Syntax: **kasha_recipe** _location_ { _recipe_ };
+* Syntax: **http_log_json_format** _location_ { _format_ };
 * Default: —
 * Context: http location
 
@@ -158,57 +172,57 @@ For a **file:** type the value part will be a local file name. e.g. **file:**/tm
 
 For a **kafka:** type the value part will be the topic name. e.g. **kafka:** topic
 
-The kafka output only happens if a list of brokers is defined by **kasha_kafka_brokers** directive.
+The kafka output only happens if a list of brokers is defined by **http_log_json_kafka_brokers** directive.
 
-###### _recipe_ ######
+###### _format_ ######
 
 See details above.
 
 ---
 
-* Syntax: **"kasha_kafka_partition** _compression_codec_;
+* Syntax: **"http_log_json_kafka_partition** _compression_codec_;
 * Default: RD_KAFKA_PARTITION_UA
 * Context: http local
 
 ---
 
-* Syntax: **kasha_kafka_brokers** list of brokers separated by spaces;
+* Syntax: **http_log_json_kafka_brokers** list of brokers separated by spaces;
 * Default: —
 * Context: http main
 
 ---
 
-* Syntax: **kasha_kafka_client_id** _id_;
-* Default: kasha
+* Syntax: **http_log_json_kafka_client_id** _id_;
+* Default: http_log_json
 * Context: http main
 
 ---
 
-* Syntax: **"kasha_kafka_compression** _compression_codec_;
+* Syntax: **"http_log_json_kafka_compression** _compression_codec_;
 * Default: snappy
 * Context: http main
 
 ---
 
-* Syntax: **"kasha_kafka_log_level** _numeric_log_level_;
+* Syntax: **"http_log_json_kafka_log_level** _numeric_log_level_;
 * Default: 6
 * Context: http main
 
 ---
 
-* Syntax: **"kasha_kafka_max_retries** _numeric_;
+* Syntax: **"http_log_json_kafka_max_retries** _numeric_;
 * Default: 0
 * Context: http main
 
 ---
 
-* Syntax: **"kasha_kafka_buffer_max_messages** _numeric_;
+* Syntax: **"http_log_json_kafka_buffer_max_messages** _numeric_;
 * Default: 100000
 * Context: http main
 
 ---
 
-* Syntax: **"kasha_kafka_backoff_ms** _numeric_;
+* Syntax: **"http_log_json_kafka_backoff_ms** _numeric_;
 * Default: 10
 * Context: http main
 
@@ -231,7 +245,7 @@ $ sudo apt-get install libjansson-dev librdkafka-dev
 Build as a common nginx module.
 
 ```bash
-$ ./configure --add-module=/build/ngx-kasha
+$ ./configure --add-module=/build/ngx-http_log_json
 $ make && make install
 
 ```
