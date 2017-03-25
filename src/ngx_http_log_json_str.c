@@ -1,8 +1,8 @@
-#include <ngx_kasha_str.h>
+#include <ngx_http_log_json_str.h>
 
 /* duplicates and set as null terminated */
 u_char *
-ngx_kasha_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
+ngx_http_log_json_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
 
     u_char  *dst;
 
@@ -16,7 +16,7 @@ ngx_kasha_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
 }
 
 u_char *
-ngx_kasha_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
+ngx_http_log_json_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
 
     u_char  *dst;
     size_t l = ngx_min(src->len, len);
@@ -31,7 +31,7 @@ ngx_kasha_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
 }
 
 ngx_int_t
-ngx_kasha_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
+ngx_http_log_json_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
 
     if (! src) {
         return NGX_ERROR;
@@ -41,7 +41,8 @@ ngx_kasha_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
     if (!dst->data) {
         return NGX_ERROR;
     }
-    ngx_copy(dst->data, src->data, src->len);
+
+    ngx_cpystrn(dst->data, src->data, src->len+1);
     dst->len = src->len;
     return NGX_OK;
 }
