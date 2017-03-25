@@ -28,13 +28,10 @@ rd_kafka_conf_res_t
 kasha_kafka_conf_set_int(ngx_pool_t *pool, rd_kafka_conf_t *conf, const char * key, intmax_t value) {
 
     char buf[21] = {0};
-    uint32_t sz  = sizeof(buf);
     char errstr[2048]  = {0};
     uint32_t errstr_sz = sizeof(errstr);
 
-    uint32_t offset = 0;
     snprintf(buf, 21, "%lu", value);
-
     rd_kafka_conf_res_t ret = rd_kafka_conf_set(conf, key, buf, errstr, errstr_sz);
     if (ret != RD_KAFKA_CONF_OK) {
         ngx_log_error(NGX_LOG_WARN, pool->log, 0,

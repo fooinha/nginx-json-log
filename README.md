@@ -1,13 +1,29 @@
-# ngx-kasha
+# ngx-http-log-json
 
 
-nginx module for advanced per location logging - aka kasha (🍲)
+nginx http module for logging in custom json format - aka kasha (🍲)
 
 ## Description
 
 This module adds to nginx the ability of advanced JSON logging of HTTP requests per location.
+
 It's possible to log to a destination ouput any request made to a specific nginx location.
+
 The output format is configurable.
+
+## Use cases
+
+That are many use cases.
+
+Many things can be done by using the access log data.
+
+Having it in JSON format makes easier for integration with other platforms and applications.
+
+A quick example:
+
+
+![](docs/use-case-kafka-logs.png?raw=true)
+
 
 ### Configuration
 
@@ -21,7 +37,8 @@ The left hand side part can be prefixed with 's:', 'i:' or 'r:', so the JSON enc
 * 's:' - JSON string ( default )
 * 'i:' - JSON integer
 * 'r:' - JSON real
-
+* 'b:' - JSON boolean
+* 'n:' - JSON null
 
 The right hand side will be the variable's name or literal value.
 For this, known or previously setted variables, can be used by using the '$' before name.
@@ -49,6 +66,7 @@ The possible output locations are:
         r:_real                     1.1;
         i:_int                      2016;
         i:_status                   $status;
+        b:_notrack                  false;
         _literal                    root;
         comm.proto                  http;
         comm.http.method            $request_method;
@@ -68,6 +86,7 @@ To ease reading, it's shown here formatted with newlines.
   "_literal": "root",
   "_real": 1.1,
   "_status": 200,
+  "_notrack": false,
   "comm": {
     "http": {
       "host": "localhost",
@@ -223,7 +242,29 @@ $ make && make install
 
 **THIS IS NOT PRODUCTION** ready.
 
-This was done over the weekend as a proof of concept, and it also lacks unit tests.
-
 So there's no guarantee of success. It most probably blow up when running in real life scenarios.
+
+#### Unit tests
+
+The unit tests use https://github.com/openresty/test-nginx framework.
+
+
+```
+$ git clone https://github.com/openresty/test-nginx.git
+$ cd test-nginx/
+$ cpanm .
+$ export PATH=$PATH:/usr/local/nginx/sbin/
+```
+
+At project root just run the prove command:
+
+```
+$ prove
+
+t/0001_simple_file_log.t .. ok
+All tests successful.
+Files=1, Tests=1,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.15 cusr  0.00 csys =  0.18 CPU)
+Result: PASS
+
+```
 

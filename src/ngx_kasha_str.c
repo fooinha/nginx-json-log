@@ -41,7 +41,8 @@ ngx_kasha_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
     if (!dst->data) {
         return NGX_ERROR;
     }
-    ngx_copy(dst->data, src->data, src->len);
+
+    ngx_cpystrn(dst->data, src->data, src->len+1);
     dst->len = src->len;
     return NGX_OK;
 }
