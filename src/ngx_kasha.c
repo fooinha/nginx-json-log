@@ -13,7 +13,7 @@
 #include "ngx_kasha_kafka.h"
 #include "ngx_kasha_str.h"
 
-#define KASHA_VER    "0.0.1"
+#define KASHA_VER    "0.0.2"
 
 #define KASHA_FILE_OUT_LEN (sizeof("file:") - 1)
 #define KASHA_LOG_HAS_FILE_PREFIX(str) \
@@ -26,6 +26,14 @@
 /* output prefixes */
 static const char *kasha_file_prefix              = "file:";
 static const char *kasha_kafka_prefix             = "kafka:";
+
+/* recipe prefixes types and values */
+static const char *kasha_true_value               = "true";
+static const char *kasha_boolean_prefix           = "b:";
+static const char *kasha_string_prefix            = "s:";
+static const char *kasha_real_prefix              = "r:";
+static const char *kasha_int_prefix               = "i:";
+static const char *kasha_null_prefix              = "n:";
 
 static ngx_int_t   kasha_has_kafka_locations      = NGX_CONF_UNSET;
 
@@ -44,7 +52,6 @@ static const char *conf_max_retries_key           = "message.send.max.retries";
 static const char *conf_buffer_max_msgs_key       = "queue.buffering.max.messages";
 static const char *conf_req_required_acks_key     = "request.required.acks";
 static const char *conf_retry_backoff_ms_key      = "retry.backoff.ms";
-static ngx_str_t   conf_snappy_value              = ngx_string("snappy");
 static ngx_str_t   conf_all_value                 = ngx_string("all");
 static ngx_str_t   conf_zero_value                = ngx_string("0");
 
@@ -415,7 +422,7 @@ ngx_kasha_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
     if (!path || !path->data || !path->len)
         return NULL;
 
-    char *copy = NULL;
+    u_char *copy = NULL;
     int l = ngx_min(path->len, max);
     int start= l - 1;
     for (int i = start; i>=0; --i) {
@@ -424,8 +431,8 @@ ngx_kasha_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
             if (copy == NULL) {
                 return NULL;
             }
-            ngx_copy(copy, &path->data[i+1], start-i);
-            return copy;
+            ngx_cpystrn(copy, &path->data[i+1], start-i+1);
+            return (const char *) copy;
         }
     }
 
@@ -435,8 +442,8 @@ ngx_kasha_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
         return NULL;
     }
 
-    ngx_copy(copy, path->data, l);
-    return copy;
+    ngx_cpystrn(copy, path->data, l+1);
+    return (const char *) copy;
 }
 
 /* helper function to find next ingredient level position in path*/
@@ -480,7 +487,7 @@ ngx_kasha_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t *parent,
                         "Failed allocate new kasha level label");
                 return NULL;
             }
-            ngx_copy(level->label.data, path->data, len);
+            ngx_cpystrn(level->label.data, path->data, len+1);
 
             /* FIX ME - breaks first level*/
             /*
@@ -501,6 +508,60 @@ ngx_kasha_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t *parent,
         ++pos;
     }
     return p;
+}
+
+/* adds a typed json node to a parent node */
+static void ngx_kasha_add_json_node(ngx_pool_t *pool, json_t *parent, json_type type, const char *key, ngx_str_t *value) {
+
+    if (type == JSON_STRING) {
+        /* it's a string type */
+        json_object_set(parent,
+                key,
+                json_stringn((const char *)value->data, value->len));
+    } else if (type == JSON_INTEGER) {
+        /* it's a integer type*/
+        ngx_int_t val_int = ngx_atoi(value->data, value->len);
+        json_object_set(parent,
+                key,
+                json_integer(val_int));
+    } else if (type == JSON_TRUE) {
+        /* it's a true type*/
+        json_object_set(parent,
+                key,
+                json_true());
+    } else if (type == JSON_FALSE) {
+        /* it's a false type*/
+        json_object_set(parent,
+                key,
+                json_false());
+    } else if (type == JSON_NULL) {
+        /* it's a null type*/
+        json_object_set(parent,
+                key,
+                json_null());
+    } else if (type == JSON_REAL) {
+        /* it's a real type */
+        //u_char *nptr  = ngx_palloc(r->pool, value.len + 1);
+        u_char *nptr  = ngx_kasha_str_dup(pool, value);
+        if (nptr) {
+            char *endptr = (char *) nptr + value->len;
+            //ngx_cpystrn(nptr, value.data, value.len+1);
+            double val_real = strtold((const char *)nptr, &endptr);
+            json_object_set(parent,
+                    key,
+                    json_real(val_real));
+        }
+    }
+}
+
+static ngx_int_t ngx_kasha_write_sink_file(ngx_fd_t fd, const char *txt) {
+    size_t to_write = strlen(txt);
+    size_t written = ngx_write_fd(fd, (u_char *)txt, strlen(txt));
+    if (to_write != written) {
+        return NGX_ERROR;
+    }
+    ngx_write_fd(fd, "\n", 1);
+    return NGX_OK;
 }
 
 /* main soup recipe routine */
@@ -561,6 +622,7 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r) {
                 sizeof(ngx_kasha_json_value_t));
 
     ngx_kasha_ingredient_t * cv = kv->mixed->elts;
+    /* Put each ingredient value */
     for (size_t i = 0; i < kv->mixed->nelts; i++) {
 
         ngx_str_t value;
@@ -595,30 +657,7 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r) {
 
         /* add value to parent location */
         const char *key = ngx_kasha_label_key_dup(r->pool, cv[i].name, cv[i].name->len);
-        if (cv[i].type == JSON_STRING) {
-            /* it's a string type */
-            json_object_set(parent,
-                    key,
-                    json_stringn((const char *)value.data, value.len));
-        } else if (cv[i].type == JSON_INTEGER) {
-            /* it's a integer type*/
-            ngx_int_t val_int = ngx_atoi(value.data, value.len);
-            json_object_set(parent,
-                    key,
-                    json_integer(val_int));
-        } else if (cv[i].type == JSON_REAL) {
-            /* it's a real type */
-            //u_char *nptr  = ngx_palloc(r->pool, value.len + 1);
-            u_char *nptr  = ngx_kasha_str_dup(r->pool, &value);
-            if (nptr) {
-                char *endptr = (char *) nptr + value.len;
-                //ngx_cpystrn(nptr, value.data, value.len+1);
-                double val_real = strtold((const char *)nptr, &endptr);
-                json_object_set(parent,
-                        key,
-                        json_real(val_real));
-            }
-        }
+        ngx_kasha_add_json_node(r->pool, parent, cv[i].type,key, &value);
 
     } // mixed loop
 
@@ -631,9 +670,11 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r) {
         return NGX_OK;
     }
 
-    if (kv->sink_type == NGX_KASHA_SINK_FILE){
-        ssize_t n = ngx_write_fd(klcf->file->fd, (u_char *)txt, strlen(txt));
-        ngx_write_fd(klcf->file->fd, "\n", 1);
+    if (kv->sink_type == NGX_KASHA_SINK_FILE) {
+        if ( ngx_kasha_write_sink_file(klcf->file->fd, txt) == NGX_ERROR) {
+            set_current_mem_pool(NULL);
+            return NGX_ERROR;
+        }
     }
 
     if (kv->sink_type == NGX_KASHA_SINK_KAFKA){
@@ -657,7 +698,6 @@ static ngx_int_t ngx_kasha_log_handler(ngx_http_request_t *r) {
                 set_current_mem_pool(NULL);
                 return NGX_ERROR;
             }
-
         }
 
         /* FIXME : Reconnect support */
@@ -704,7 +744,7 @@ void * ngx_kasha_json_malloc(size_t size) {
     if (!pool) {
         return NULL;
     }
-    void *mem =  ngx_palloc(pool, size);
+    void *mem = ngx_palloc(pool, size);
     if (!mem) {
         ngx_log_error(NGX_LOG_EMERG, pool->log, 0,
                 "Failed to allocate memory at json pool");
@@ -750,7 +790,7 @@ ngx_kasha_recipe_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, u
     v->escape = 1;
     v->no_cacheable = 1;
     v->len = -1; /* kv->recipe.len */
-    v->data = (void *) data;
+    v->data = (void *) kv;
 
     return NGX_OK;
 }
@@ -795,198 +835,139 @@ ngx_int_t ngx_kasha_ingredients_cmp(const void *left, const void *right) {
             ngx_min(l->name->len, r->name->len));
 }
 
-/*TODO: Refactor this obviously.
- *       Messy workbench while preparing ingredients
- */
+/* Reads recipe from configuration */
 static ngx_int_t
 ngx_kasha_read_recipe(ngx_conf_t *cf, ngx_kasha_variable_t *kv, ngx_pool_t *pool) {
 
+/* This requires PCRE */
+#if (NGX_PCRE)
+    u_char errstr[NGX_MAX_CONF_ERRSTR];
+    ngx_regex_compile_t rc;
     ngx_str_t *recipe;
-    u_char *key = NULL;
-    u_char *value = NULL;
-    u_char has = 0;
-    u_char has_space = 0;
-    u_char has_key = 0;
-    u_char *start;
-    u_char *start_value;
-    u_char *start_key;
-    size_t val_len = 0;
-    size_t key_len = 0;
+    int ovector[1024] = {0};
+    char value[1025] = {0};
+    ngx_str_t pattern = ngx_string("\\s*([^\\s]+)\\s+([^\\s;]+);");
 
-    recipe = &kv->recipe;
-    start = &recipe->data[0];
-    for (size_t i=0; i < recipe->len; ++i) {
-        val_len = 0;
-        key_len = 0;
-        start_value = 0;
-        start_key = 0;
-        value = 0;
-        key = 0;
-        if (has && recipe->data[i] == ';') {
+    /* Prepares regex */
+    ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
+    rc.pattern = pattern;
+    rc.pool = cf->pool;
+    rc.options = NGX_REGEX_CASELESS;
+    rc.err.len = NGX_MAX_CONF_ERRSTR;
+    rc.err.data = errstr;
 
-            size_t len = &recipe->data[i] - start;
-            /* save ingredient line*/
-            ngx_str_t *line = ngx_array_push(kv->ingredients);
-            if (line == NULL) {
-                ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                        "Failed to configure kasha recipe.");
-                return NGX_ERROR;
-            }
-            line->data = ngx_palloc(pool, len);
-            if (! line->data) {
-                ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                        "Failed to configure kasha recipe.");
-                return NGX_ERROR;
-            }
-            ngx_memzero(line->data, len) ;
-            ngx_cpymem(line->data, start, len);
-            line->len = len;
-
-            ngx_kasha_ingredient_t *mixed = ngx_array_push(kv->mixed);
-            if (mixed == NULL) {
-                ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                        "Failed to configure kasha recipe.");
-                return NGX_ERROR;
-            }
-
-            has_space = 0;
-            has_key = 0;
-            start_key = &line->data[0];
-            key = 0;
-            /* compile lines */
-            for (size_t j = 0; j < len; ++j) {
-                if (!has_key) {
-                    if (!isspace(line->data[j])) {
-                        has_key = 1;
-                        start_key = &line->data[j];
-                    }
-                    continue;
-                }
-                if (isspace(line->data[j])) {
-                    key_len = &line->data[j] - start_key;
-                    size_t key_total_len = key_len;
-                    key = ngx_palloc(pool, len);
-                    if (! line->data) {
-                        ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                                "Failed to configure kasha recipe.");
-                        return NGX_ERROR;
-                    }
-                    ngx_memzero(key, key_len) ;
-                    ngx_cpymem(key, start_key, key_len);
-                    /* trim spaces */
-                    for (size_t k = key_len - 1; k > 0; --k) {
-                        if (isspace(key[k])) {
-                            key[k] = '\0';
-                            continue;
-                        }
-                        break;
-                    }
-
-                    val_len = len-key_len;
-                    size_t val_total_len = val_len;
-                    value = ngx_palloc(pool, val_len);
-                    if (!value) {
-                        ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                                "Failed to configure kasha recipe.");
-                        return NGX_ERROR;
-                    }
-                    start_value = &line->data[j];
-
-                    /* trim spaces */
-                    /* TODO: FIX ME */
-                    for (;;) {
-                        if (isspace(*start_value)) {
-                            ++start_value;
-                            --val_len;
-                            continue;
-                        }
-                        /*TODO: FIX ME INCOMPLET TRIM */
-                        break;
-                    }
-                    ngx_memzero(value, val_len) ;
-                    ngx_cpymem(value, start_value, val_len);
-                    break;
-                }
-            }
-            if (! key || !value) {
-                ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                        "Failed to configure kasha recipe.");
-                return NGX_ERROR;
-            }
-            /* COMPILE */
-            {
-                ngx_str_t *value_str = ngx_palloc(pool, sizeof(ngx_str_t));
-                ngx_str_t *key_str = ngx_palloc(pool, sizeof(ngx_str_t));
-
-                if (!key_str) {
-                    ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                            "Failed to configure kasha recipe.");
-                    return NGX_ERROR;
-                }
-
-                key_str->data = key;
-                key_str->len = key_len;
-
-                if (!value_str) {
-                    ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                            "Failed to configure kasha recipe.");
-                    return NGX_ERROR;
-                }
-                value_str->data = value;
-                value_str->len = val_len;
-
-                /* Compile complex value expression */
-
-                ngx_http_complex_value_t           *cv = NULL;
-                ngx_http_compile_complex_value_t   ccv;
-                cv = ngx_palloc(pool, sizeof(ngx_http_complex_value_t));
-                if (cv == NULL) {
-                    ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                            "Failed to configure kasha recipe.");
-                    return NGX_ERROR;
-                }
-                ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
-                ccv.cf = cf;
-                ccv.value = value_str;
-                ccv.complex_value = cv;
-                if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
-                    ngx_log_error(NGX_LOG_ERR, pool->log, 0,
-                            "Failed to configure kasha recipe.");
-                    return NGX_ERROR;
-                }
-
-                mixed->name = key_str;
-                /* CHECK TYPE */
-                mixed->type = JSON_STRING;
-                //TODO: support boolean type
-                if (ngx_strncmp(mixed->name->data, "i:", 2) == 0) {
-                    mixed->type = JSON_INTEGER;
-                    mixed->name->data += 2;
-                    mixed->name->len  -= 2;
-                } else if (ngx_strncmp(mixed->name->data, "r:", 2) == 0) {
-                    mixed->type = JSON_REAL;
-                    mixed->name->data += 2;
-                    mixed->name->len  -= 2;
-                } else if (ngx_strncmp(mixed->name->data, "s:", 2) == 0) {
-                    mixed->type = JSON_STRING;
-                    mixed->name->data += 2;
-                    mixed->name->len  -= 2;
-                } else {
-                    mixed->type = JSON_STRING;
-                }
-                mixed->ccv = (ngx_http_compile_complex_value_t *) cv;
-            }
-            has = 0;
-            continue;
-        }
-        if (!has && !isspace(recipe->data[i]) && recipe->data[i] != ';') {
-            start = &recipe->data[i];
-            has = 1;
-        }
+    /* Compiles regex */
+    if (ngx_regex_compile(&rc) != NGX_OK) {
+        /* Bad regex - programming error */
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
+        return NGX_ERROR;
     }
-    /* sort ingredients */
-    ngx_sort(kv->mixed->elts, (size_t) kv->mixed->nelts, sizeof(ngx_kasha_ingredient_t),
-            ngx_kasha_ingredients_cmp);
+
+    /* Tries to match recipe to regex and verify format */
+    recipe = &kv->recipe;
+
+    /* While we find group lines for the recipe */
+    int matched = ngx_regex_exec(rc.regex, recipe, ovector, 1024);
+    while (matched > 0) {
+    int offset = 0;
+
+        if (matched < 1) {
+            ngx_log_error(NGX_LOG_ERR, pool->log, 0,
+                    "Failed to configure kasha recipe.");
+            return NGX_ERROR;
+        }
+
+        ngx_str_t *key_str = ngx_palloc(pool, sizeof(ngx_str_t));
+        ngx_str_t *value_str = ngx_palloc(pool, sizeof(ngx_str_t));
+        for (int i=0; i < matched; i++) {
+            int ret = pcre_copy_substring((const char *)recipe->data, ovector, matched, i, value, 1024);
+            /* i = 0 => all match with isize */
+            if (i == 0) {
+                offset = ret;
+            }
+            /* i = 1 => key - ingredient name */
+            if (i == 1) {
+                key_str->data = ngx_palloc(pool, ret);
+                key_str->len = ret;
+                ngx_cpystrn(key_str->data, (u_char *)value, ret+1);
+            }
+            /* i = 2 => value */
+            if (i == 2) {
+                value_str->data = ngx_palloc(pool, ret);
+                value_str->len = ret;
+                ngx_cpystrn(value_str->data, (u_char *)value, ret+1);
+            }
+        }
+
+        ngx_http_complex_value_t           *cv = NULL;
+        ngx_http_compile_complex_value_t   ccv;
+        cv = ngx_palloc(pool, sizeof(ngx_http_complex_value_t));
+        if (cv == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pool->log, 0,
+                    "#Failed to configure kasha recipe.");
+            return NGX_ERROR;
+        }
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+        ccv.cf = cf;
+        ccv.value = value_str;
+        ccv.complex_value = cv;
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, pool->log, 0,
+                    "#Failed to configure kasha recipe.");
+            return NGX_ERROR;
+        }
+
+        ngx_kasha_ingredient_t *mixed = ngx_array_push(kv->mixed);
+        if (mixed == NULL) {
+            ngx_log_error(NGX_LOG_ERR, pool->log, 0,
+                    "#Failed to configure kasha recipe.");
+            return NGX_ERROR;
+        }
+
+        mixed->name = key_str;
+
+        /* Check and save type from name prefix */
+        /* Default is JSON_STRING type */
+        mixed->type = JSON_STRING;
+        if (ngx_strncmp(mixed->name->data, kasha_null_prefix, 2) == 0) {
+            mixed->type = JSON_NULL;
+            mixed->name->data += 2;
+            mixed->name->len  -= 2;
+        } else if (ngx_strncmp(mixed->name->data, kasha_int_prefix, 2) == 0) {
+            mixed->type = JSON_INTEGER;
+            mixed->name->data += 2;
+            mixed->name->len  -= 2;
+        } else if (ngx_strncmp(mixed->name->data, kasha_real_prefix, 2) == 0) {
+            mixed->type = JSON_REAL;
+            mixed->name->data += 2;
+            mixed->name->len  -= 2;
+        } else if (ngx_strncmp(mixed->name->data, kasha_string_prefix, 2) == 0) {
+            mixed->type = JSON_STRING;
+            mixed->name->data += 2;
+            mixed->name->len  -= 2;
+        } else if (ngx_strncmp(mixed->name->data, kasha_boolean_prefix, 2) == 0) {
+            if (ngx_strncmp(value_str->data, kasha_true_value, 4) == 0) {
+                mixed->type = JSON_TRUE;
+            } else {
+                mixed->type = JSON_FALSE;
+            }
+            mixed->name->data += 2;
+            mixed->name->len  -= 2;
+        } else {
+            mixed->type = JSON_STRING;
+        }
+        mixed->ccv = (ngx_http_compile_complex_value_t *) cv;
+
+        /* adjust pointers and size for reading the next ingredient*/
+        recipe->data+=offset;
+        recipe->len-=offset;
+
+        matched = ngx_regex_exec(rc.regex, recipe, ovector, 1024);
+    }
+#endif
+
+    /* sort ingredients .... this is very import for serialization output alg*/
+    ngx_sort(kv->mixed->elts, (size_t) kv->mixed->nelts, sizeof(ngx_kasha_ingredient_t), ngx_kasha_ingredients_cmp);
 
     return NGX_OK;
 }
@@ -1045,7 +1026,7 @@ static char *
 ngx_kasha_recipe_block_parse_output_location(ngx_conf_t *cf,
         ngx_kasha_loc_conf_t* klcf, ngx_kasha_variable_t *kv, ngx_str_t *log) {
 
-    if (! log ) {
+    if (! log) {
         goto failed;
     }
 
@@ -1094,12 +1075,12 @@ ngx_kasha_recipe_block_parse_output_location(ngx_conf_t *cf,
 
     kv->sink = *log;
 
-    ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
-            "kasha: output location [%V]", log);
+    ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
+            "kasha: output location [%v]", log);
     return NGX_CONF_OK;
 failed:
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "invalid recipe log output \"%V\"", log);
+            "invalid recipe log output \"%v\"", log);
     return NGX_CONF_ERROR;
 }
 
@@ -1107,17 +1088,15 @@ static char *
 ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
     ngx_str_t                  *value;
-    ngx_str_t                  *log;
     ngx_http_variable_t        *v;
     ngx_kasha_variable_t       *kv;
-    ngx_http_core_loc_conf_t   *clcf;
     ngx_kasha_loc_conf_t       *klcf = conf;
 
     value = cf->args->elts;
     /* this should never happen, but we check it anyway */
     if (! value) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                "invalid recipe", &value[1]);
+                "invalid empty recipe", &value[1]);
         return NGX_CONF_ERROR;
     }
 
@@ -1140,12 +1119,12 @@ ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     kv->ingredients_len = ngx_kasha_count(&kv->recipe, ';');
     if (ngx_kasha_ingredients_init(kv, cf->pool) != NGX_OK) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                "invalid recipe");
+                "invalid recipe init");
         return NGX_CONF_ERROR;
     }
     if (ngx_kasha_read_recipe(cf, kv, cf->pool) != NGX_OK) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                "invalid recipe");
+                "invalid recipe read");
         return NGX_CONF_ERROR;
     }
     v->get_handler = ngx_kasha_recipe_variable;
@@ -1153,4 +1132,3 @@ ngx_kasha_recipe_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
     return NGX_CONF_OK;
 }
-
