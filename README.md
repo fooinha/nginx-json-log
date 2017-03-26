@@ -1,12 +1,14 @@
-# ngx-kasha
+# ngx-http-log-json
 
 
-nginx module for advanced per location logging - aka kasha (🍲)
+nginx http module for logging in custom json format - aka kasha (🍲)
 
 ## Description
 
 This module adds to nginx the ability of advanced JSON logging of HTTP requests per location.
+
 It's possible to log to a destination ouput any request made to a specific nginx location.
+
 The output format is configurable.
 
 ### Configuration
@@ -21,7 +23,8 @@ The left hand side part can be prefixed with 's:', 'i:' or 'r:', so the JSON enc
 * 's:' - JSON string ( default )
 * 'i:' - JSON integer
 * 'r:' - JSON real
-
+* 'b:' - JSON boolean
+* 'n:' - JSON null
 
 The right hand side will be the variable's name or literal value.
 For this, known or previously setted variables, can be used by using the '$' before name.
@@ -49,6 +52,7 @@ The possible output locations are:
         r:_real                     1.1;
         i:_int                      2016;
         i:_status                   $status;
+        b:_notrack                  false;
         _literal                    root;
         comm.proto                  http;
         comm.http.method            $request_method;
@@ -68,6 +72,7 @@ To ease reading, it's shown here formatted with newlines.
   "_literal": "root",
   "_real": 1.1,
   "_status": 200,
+  "_notrack": false,
   "comm": {
     "http": {
       "host": "localhost",
