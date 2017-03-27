@@ -70,12 +70,13 @@ struct ngx_http_log_json_item_s {
 };
 
 struct ngx_http_log_json_variable_s {
-    ngx_str_t          spec;
-    ngx_str_t          sink;
-    ngx_http_log_json_sink_e   sink_type;
-    uint32_t           items_len;
-    ngx_array_t        *items;
-    ngx_array_t        *mixed;
+    ngx_str_t                   spec;
+    ngx_str_t                   sink;
+    ngx_http_log_json_sink_e    sink_type;
+    uint32_t                    items_len;
+    ngx_array_t                 *items;
+    ngx_array_t                 *mixed;
+    ngx_http_complex_value_t    *filter;
 };
 
 struct ngx_http_log_json_loc_kafka_conf_s {
@@ -140,7 +141,7 @@ static ngx_pool_t * current_pool;
 static ngx_command_t ngx_http_log_json_commands[] = {
     /* RECIPE */
     { ngx_string("http_log_json_format"),
-        NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
+        NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3,
         ngx_http_log_json_format_block,
         NGX_HTTP_LOC_CONF_OFFSET,
         0,
@@ -569,11 +570,12 @@ static ngx_int_t ngx_http_log_json_write_sink_file(ngx_fd_t fd, const char *txt)
 /* main soup spec routine */
 static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
 
-    ngx_http_log_json_variable_t * kv = NULL;
-    ngx_http_log_json_loc_conf_t  *klcf;
+    ngx_http_log_json_variable_t   *kv = NULL;
+    ngx_http_log_json_loc_conf_t   *klcf;
     ngx_http_log_json_main_conf_t  *mcf;
+    ngx_str_t                      filter_val;
     /* Json structures */
-    json_t * obj;
+    json_t                         * obj;
 
     /* Discard connect methods ... somehow file is not open. Side effect fom Bad request 400? */
     if (r->method == NGX_HTTP_UNKNOWN &&
@@ -605,6 +607,17 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
     kv = (ngx_http_log_json_variable_t *) spec->data;
     if (!kv || !kv->mixed || !kv->mixed->nelts) {
         return NGX_OK;
+    }
+
+    /* Check filter result */
+    if (kv->filter != NULL) {
+        if (ngx_http_complex_value(r, kv->filter, &filter_val) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (filter_val.len == 0 || (filter_val.len == 1 && filter_val.data[0] == '0')) {
+            return NGX_OK;
+        }
     }
 
     obj = json_object();
@@ -1096,10 +1109,11 @@ failed:
 static char *
 ngx_http_log_json_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
-    ngx_str_t                  *value;
-    ngx_http_variable_t        *v;
+    ngx_str_t                          *value;
+    ngx_http_variable_t                *v;
     ngx_http_log_json_variable_t       *kv;
     ngx_http_log_json_loc_conf_t       *klcf = conf;
+    ngx_http_compile_complex_value_t   ccv;
 
     value = cf->args->elts;
     /* this should never happen, but we check it anyway */
@@ -1136,8 +1150,36 @@ ngx_http_log_json_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
                 "invalid spec read");
         return NGX_CONF_ERROR;
     }
+
     v->get_handler = ngx_http_log_json_format_variable;
     v->data = (uintptr_t) kv;
+
+    kv->filter = NULL;
+    /*check and save the if filter condition */
+    if (cf->args->size >= 4 && value[3].data != NULL) {
+
+        if (ngx_strncmp(value[3].data, "if=", 3) == 0) {
+            ngx_str_t    s;
+            s.len = value[3].len - 3;
+            s.data = value[3].data + 3;
+
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+            ccv.cf = cf;
+            ccv.value = &s;
+            ccv.complex_value = ngx_palloc(cf->pool,
+                                           sizeof(ngx_http_complex_value_t));
+            if (ccv.complex_value == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+
+            kv->filter = ccv.complex_value;
+        }
+    }
 
     return NGX_CONF_OK;
 }

@@ -7,6 +7,7 @@ Changes with ngx-http-log-json 0.0.2                                26 Mar 2017
     *) refactoring functions
     *) unit tests
     *) travis script integration
+    *) if= condition argument
 
 Changes with ngx-kasha 0.0.1                                        14 Dec 2016
 

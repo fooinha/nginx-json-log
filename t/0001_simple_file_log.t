@@ -44,6 +44,12 @@ sub check_file_test_2 {
    is($scalar->{'false'}, JSON::false);
 }
 
+sub check_file_test_3 {
+    my $size = -s "$ServRoot/test.3.json";
+    unlink "$ServRoot/test.3.json";
+    die ("File should be empty") if ($size ne 0);
+}
+
 run_tests();
 
 __DATA__
@@ -79,3 +85,21 @@ __DATA__
 \&main::check_file_test_2
 --- error_code: 200
 
+=== TEST 3: if condiftion
+--- config
+      location /kasha {
+            return 200 "hello";
+            http_log_json_format file:test.3.json '
+               b:true         true;
+               b:false        false;
+               n:null         whatever;
+               r:real         1.1;
+               i:int          2014;
+            literal root;
+     ' if=0;
+     }
+--- request
+    GET /kasha
+--- response_body_filters eval
+\&main::check_file_test_3
+--- error_code: 200

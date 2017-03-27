@@ -146,7 +146,7 @@ To ease reading, it's shown here formatted with newlines.
 ### Directives
 
 ---
-* Syntax: **http_log_json_format** _location_ { _format_ };
+* Syntax: **http_log_json_format** _location_ { _format_ } _if_=...;
 * Default: —
 * Context: http location
 
@@ -215,6 +215,9 @@ See details above.
 * Context: http main
 
 
+###### _if_=... ######
+
+Works the same way as _if_ argument from http [access_log](http://nginx.org/en/docs/http/ngx_http_log_module.html#access_log) directive.
 
 ### Build
 
