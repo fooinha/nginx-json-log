@@ -9,21 +9,10 @@ This module adds to nginx the ability of advanced JSON logging of HTTP requests 
 It's possible to log to a destination ouput any request made to a specific nginx location.
 
 The output format is configurable.
+
 It also allows to log complex and multi-level JSON documents.
 
-## Use cases
-
-That are many use cases.
-
-Many things can be done by using the access log data.
-
-Having it in JSON format makes easier for integration with other platforms and applications.
-
-A quick example:
-
-
-![](docs/use-case-kafka-logs.png?raw=true)
-
+It supports logging to text file or to a kafka topic.
 
 ## Use cases
 
@@ -34,7 +23,6 @@ Many things can be done by using the access log data.
 Having it in JSON format makes easier for integration with other platforms and applications.
 
 A quick example:
-
 
 ![](docs/use-case-kafka-logs.png?raw=true)
 
@@ -277,7 +265,7 @@ $ prove
 
 t/0001_simple_file_log.t .. ok
 All tests successful.
-Files=1, Tests=1,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.15 cusr  0.00 csys =  0.18 CPU)
+Files=1, Tests=8,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.15 cusr  0.00 csys =  0.18 CPU)
 Result: PASS
 
 ```
