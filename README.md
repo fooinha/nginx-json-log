@@ -31,16 +31,21 @@ A quick example:
 
 Each logging configuration is based on a http_log_json_format. (🍲)
 
-A http_log_json spec is a ';' separated list of items to include in the logging preparation.
+A http_log_json_format is a ';' separated list of items to include in the logging preparation.
 
 The left hand side part of item will be the JSON Path for the variable name
-The left hand side part can be prefixed with 's:', 'i:' or 'r:', so the JSON encoding type can be controlled.
+The left hand side part can be prefixed with 's:', 'i:', 'r:', 'b:' or 'n:', so, the JSON encoding type can be controlled.
 
 * 's:' - JSON string ( default )
 * 'i:' - JSON integer
 * 'r:' - JSON real
 * 'b:' - JSON boolean
 * 'n:' - JSON null
+
+Additional prefix:
+
+* 'a:' - JSON Array - MUST be used before other prefixes. All keys with same name and defined as array will be its values grouped together in an array. ( see example below )
+
 
 The right hand side will be the variable's name or literal value.
 For this, known or previously setted variables, can be used by using the '$' before name.
@@ -75,6 +80,8 @@ The possible output locations are:
         comm.http.path              $uri;
         comm.http.host              $host;
         comm.http.server_name       $server_name;
+        a:i:list                    1;
+        a:list                      string;
      ';
 ```
 
@@ -105,7 +112,11 @@ To ease reading, it's shown here formatted with newlines.
   "src": {
     "ip": "127.0.0.1",
     "port": "52136"
-  }
+  },
+  "list": [
+    1,
+    "string"
+  ]
 }
 ```
 

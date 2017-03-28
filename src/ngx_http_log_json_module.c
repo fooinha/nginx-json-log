@@ -29,6 +29,7 @@ static const char *http_log_json_kafka_prefix             = "kafka:";
 
 /* spec prefixes types and values */
 static const char *http_log_json_true_value               = "true";
+static const char *http_log_json_array_prefix             = "a:";
 static const char *http_log_json_boolean_prefix           = "b:";
 static const char *http_log_json_string_prefix            = "s:";
 static const char *http_log_json_real_prefix              = "r:";
@@ -66,6 +67,7 @@ struct ngx_http_log_json_value_s {
 struct ngx_http_log_json_item_s {
     json_type          type;
     ngx_str_t          *name;
+    int                is_array;
     ngx_http_compile_complex_value_t *ccv;
 };
 
@@ -514,34 +516,38 @@ ngx_http_log_json_find_parent(ngx_pool_t *pool, ngx_array_t *arr_levels, json_t 
 }
 
 /* adds a typed json node to a parent node */
-static void ngx_http_log_json_add_json_node(ngx_pool_t *pool, json_t *parent, json_type type, const char *key, ngx_str_t *value) {
+static void ngx_http_log_json_add_json_node(ngx_pool_t *pool,
+        json_t *base, int is_array, json_type type, const char *key, ngx_str_t *value) {
+
+    json_t * parent = base;
+    json_t * parent_array = NULL;
+    json_t * node = NULL;
+
+    if (is_array) {
+       parent_array = json_object_get(base, key) ;
+       if (parent_array == NULL) {
+           parent_array = json_array();
+           json_object_set(parent, key, parent_array);
+       }
+       parent = parent_array;
+    }
 
     if (type == JSON_STRING) {
         /* it's a string type */
-        json_object_set(parent,
-                key,
-                json_stringn((const char *)value->data, value->len));
+        node = json_stringn((const char *)value->data, value->len);
     } else if (type == JSON_INTEGER) {
         /* it's a integer type*/
         ngx_int_t val_int = ngx_atoi(value->data, value->len);
-        json_object_set(parent,
-                key,
-                json_integer(val_int));
+        node = json_integer(val_int);
     } else if (type == JSON_TRUE) {
         /* it's a true type*/
-        json_object_set(parent,
-                key,
-                json_true());
+        node = json_true();
     } else if (type == JSON_FALSE) {
         /* it's a false type*/
-        json_object_set(parent,
-                key,
-                json_false());
+        node = json_false();
     } else if (type == JSON_NULL) {
         /* it's a null type*/
-        json_object_set(parent,
-                key,
-                json_null());
+        node = json_null();
     } else if (type == JSON_REAL) {
         /* it's a real type */
         //u_char *nptr  = ngx_palloc(r->pool, value.len + 1);
@@ -550,9 +556,14 @@ static void ngx_http_log_json_add_json_node(ngx_pool_t *pool, json_t *parent, js
             char *endptr = (char *) nptr + value->len;
             //ngx_cpystrn(nptr, value.data, value.len+1);
             double val_real = strtold((const char *)nptr, &endptr);
-            json_object_set(parent,
-                    key,
-                    json_real(val_real));
+            node = json_real(val_real);
+        }
+    }
+    if (node) {
+        if (! is_array) {
+            json_object_set(parent, key, node);
+        } else {
+            json_array_append(parent, node);
         }
     }
 }
@@ -609,6 +620,22 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
         return NGX_OK;
     }
 
+    /* don't do anything if no file is available to write */
+    if (kv->sink_type == NGX_HTTP_LOG_JSON_SINK_FILE){
+        if (klcf->file == NULL ) {
+            return NGX_OK /* or ERROR ? */;
+        }
+    }
+
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_log_json_module);
+
+    /* don't do anything if no kafka brokers to send */
+    if (kv->sink_type == NGX_HTTP_LOG_JSON_SINK_KAFKA){
+        if (!mcf->kafka.valid_brokers) {
+            return NGX_OK /* or ERROR ? */;
+        }
+    }
+
     /* Check filter result */
     if (kv->filter != NULL) {
         if (ngx_http_complex_value(r, kv->filter, &filter_val) != NGX_OK) {
@@ -625,20 +652,6 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
         return NGX_ERROR;
     }
 
-    mcf = ngx_http_get_module_main_conf(r, ngx_http_log_json_module);
-
-    /* don't do anything if no kafka brokers to send */
-    if (kv->sink_type == NGX_HTTP_LOG_JSON_SINK_KAFKA){
-        if (!mcf->kafka.valid_brokers) {
-            return NGX_OK /* or ERROR ? */;
-        }
-    }
-
-    if (kv->sink_type == NGX_HTTP_LOG_JSON_SINK_FILE){
-        if (klcf->file == NULL ) {
-            return NGX_OK /* or ERROR ? */;
-        }
-    }
 
     /* array to keep levels node values */
     /* no need for hash or list struct */
@@ -685,7 +698,7 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
 
         /* add value to parent location */
         const char *key = ngx_http_log_json_label_key_dup(r->pool, cv[i].name, cv[i].name->len);
-        ngx_http_log_json_add_json_node(r->pool, parent, cv[i].type,key, &value);
+        ngx_http_log_json_add_json_node(r->pool, parent, cv[i].is_array, cv[i].type, key, &value);
 
     } // mixed loop
 
@@ -875,6 +888,7 @@ ngx_http_log_json_read_format(ngx_conf_t *cf, ngx_http_log_json_variable_t *kv, 
     int ovector[1024] = {0};
     char value[1025] = {0};
     ngx_str_t pattern = ngx_string("\\s*([^\\s]+)\\s+([^\\s;]+);");
+    int array_prefix_len = 0;
 
     /* Prepares regex */
     ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
@@ -954,36 +968,46 @@ ngx_http_log_json_read_format(ngx_conf_t *cf, ngx_http_log_json_variable_t *kv, 
         }
 
         mixed->name = key_str;
+        mixed->is_array = 0;
 
         /* Check and save type from name prefix */
         /* Default is JSON_STRING type */
         mixed->type = JSON_STRING;
-        if (ngx_strncmp(mixed->name->data, http_log_json_null_prefix, 2) == 0) {
+        if (ngx_strncmp(mixed->name->data, http_log_json_array_prefix, 2) == 0) {
+            mixed->is_array = 1;
+            array_prefix_len = 2;
+        }
+
+        if (ngx_strncmp(mixed->name->data + array_prefix_len, http_log_json_null_prefix, 2) == 0) {
             mixed->type = JSON_NULL;
-            mixed->name->data += 2;
-            mixed->name->len  -= 2;
-        } else if (ngx_strncmp(mixed->name->data, http_log_json_int_prefix, 2) == 0) {
+            mixed->name->data += 2 + array_prefix_len;
+            mixed->name->len  -= 2 + array_prefix_len;
+        } else if (ngx_strncmp(mixed->name->data + array_prefix_len, http_log_json_int_prefix, 2) == 0) {
             mixed->type = JSON_INTEGER;
-            mixed->name->data += 2;
-            mixed->name->len  -= 2;
-        } else if (ngx_strncmp(mixed->name->data, http_log_json_real_prefix, 2) == 0) {
+            mixed->name->data += 2 + array_prefix_len;
+            mixed->name->len  -= 2 + array_prefix_len;
+        } else if (ngx_strncmp(mixed->name->data + array_prefix_len, http_log_json_real_prefix, 2) == 0) {
             mixed->type = JSON_REAL;
-            mixed->name->data += 2;
-            mixed->name->len  -= 2;
-        } else if (ngx_strncmp(mixed->name->data, http_log_json_string_prefix, 2) == 0) {
+            mixed->name->data += 2 + array_prefix_len;
+            mixed->name->len  -= 2 + array_prefix_len;
+        } else if (ngx_strncmp(mixed->name->data + array_prefix_len, http_log_json_string_prefix, 2) == 0) {
             mixed->type = JSON_STRING;
-            mixed->name->data += 2;
-            mixed->name->len  -= 2;
-        } else if (ngx_strncmp(mixed->name->data, http_log_json_boolean_prefix, 2) == 0) {
-            if (ngx_strncmp(value_str->data, http_log_json_true_value, 4) == 0) {
+            mixed->name->data += 2 + array_prefix_len;
+            mixed->name->len  -= 2 + array_prefix_len;
+        } else if (ngx_strncmp(mixed->name->data + array_prefix_len, http_log_json_boolean_prefix, 2) == 0) {
+            if (ngx_strncmp(value_str->data + array_prefix_len, http_log_json_true_value, 4) == 0) {
                 mixed->type = JSON_TRUE;
             } else {
                 mixed->type = JSON_FALSE;
             }
-            mixed->name->data += 2;
-            mixed->name->len  -= 2;
+            mixed->name->data += 2 + array_prefix_len;
+            mixed->name->len  -= 2 + array_prefix_len;
         } else {
             mixed->type = JSON_STRING;
+            if (mixed->is_array) {
+                mixed->name->data += array_prefix_len;
+                mixed->name->len  -= array_prefix_len;
+            }
         }
         mixed->ccv = (ngx_http_compile_complex_value_t *) cv;
 
@@ -1162,7 +1186,7 @@ ngx_http_log_json_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
     kv->filter = NULL;
     /*check and save the if filter condition */
-    if (cf->args->size >= 4 && value[3].data != NULL) {
+    if (cf->args->nelts >= 4 && value[3].data != NULL) {
 
         if (ngx_strncmp(value[3].data, "if=", 3) == 0) {
             ngx_str_t    s;

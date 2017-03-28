@@ -33,7 +33,6 @@ sub check_file_test_1 {
 
 sub check_file_test_2 {
    my $json_text = get_file_contents('test.2.json');
-
    my $scalar = from_json( $json_text, { utf8  => 1 } );
 
    ok(not defined($scalar->{'null'}));
@@ -45,9 +44,23 @@ sub check_file_test_2 {
 }
 
 sub check_file_test_3 {
-    my $size = -s "$ServRoot/test.3.json";
-    unlink "$ServRoot/test.3.json";
-    die ("File should be empty") if ($size ne 0);
+   my $size = -s "$ServRoot/test.3.json";
+   unlink "$ServRoot/test.3.json";
+   die ("File should be empty") if ($size ne 0);
+}
+
+sub check_file_test_4 {
+   my $json_text = get_file_contents('test.4.json');
+
+   my $scalar = from_json( $json_text, { utf8  => 1 } );
+
+   is(ref($scalar->{'list'}), 'ARRAY');
+
+   my $expected_len = 2;
+   my $len = scalar(@{$scalar->{'list'}});
+   ok($expected_len eq $len);
+
+   unlink "$ServRoot/test.4.json";
 }
 
 run_tests();
@@ -102,4 +115,19 @@ __DATA__
     GET /kasha
 --- response_body_filters eval
 \&main::check_file_test_3
+--- error_code: 200
+
+=== TEST 4: arrays
+--- config
+      location /kasha {
+            return 200 "hello";
+            http_log_json_format file:test.4.json '
+               a:i:list       1;
+               a:list     string;
+     ';
+     }
+--- request
+    GET /kasha
+--- response_body_filters eval
+\&main::check_file_test_4
 --- error_code: 200
