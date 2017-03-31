@@ -5,7 +5,7 @@ LABEL maintainer "fooinha@gmail.com"
 # Build arguments
 ARG DEBIAN_REPO_HOST=httpredir.debian.org
 ARG GIT_LOCATION=https://github.com/fooinha/nginx-http-log-json.git
-ARG GIT_BRANCH=feature/0.0.3/module/lod
+ARG GIT_BRANCH=master
 
 # Mirror to my location
 RUN echo "deb http://${DEBIAN_REPO_HOST}/debian sid main" > /etc/apt/sources.list

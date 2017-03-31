@@ -2,6 +2,7 @@ use Test::Nginx::Socket 'no_plan';
 use Test::Nginx::Util qw/$ServRoot/;
 use JSON;
 use Test::More;
+use Data::Dumper;
 
 sub get_file_contents {
    my ($file_to_read) = @_;
@@ -61,6 +62,29 @@ sub check_file_test_4 {
    ok($expected_len eq $len);
 
    unlink "$ServRoot/test.4.json";
+}
+
+sub check_file_test_5 {
+   my $json_text = get_file_contents('test.5.json');
+
+   my $scalar = from_json( $json_text, { utf8  => 1 } );
+
+   is(ref($scalar->{'headers'}), 'HASH');
+   ok($scalar->{'headers'}->{'Host'} eq 'localhost');
+   ok($scalar->{'headers'}->{'Connection'} eq 'close');
+
+   unlink "$ServRoot/test.5.json";
+}
+
+sub check_file_test_6 {
+   my $json_text = get_file_contents('test.6.json');
+
+   my $scalar = from_json( $json_text, { utf8  => 1 } );
+
+   print Dumper $scalar;
+   #FIXME
+
+   unlink "$ServRoot/test.6.json";
 }
 
 run_tests();
@@ -137,4 +161,34 @@ __DATA__
     GET /kasha
 --- response_body_filters eval
 \&main::check_file_test_4
+--- error_code: 200
+
+=== TEST 5: request headers
+--- config
+      location /kasha {
+            return 200 "hello";
+            http_log_json_format json_5 '
+               headers        $http_log_json_req_headers;
+            ';
+            http_log_json_output file:test.5.json json_5;
+     }
+--- request
+    GET /kasha
+--- response_body_filters eval
+\&main::check_file_test_5
+--- error_code: 200
+
+=== TEST 5: response headers
+--- config
+      location /kasha {
+            return 200 "hello";
+            http_log_json_format json_6 '
+               headers        $http_log_json_resp_headers;
+            ';
+            http_log_json_output file:test.6.json json_6;
+     }
+--- request
+    GET /kasha
+--- response_body_filters eval
+\&main::check_file_test_6
 --- error_code: 200

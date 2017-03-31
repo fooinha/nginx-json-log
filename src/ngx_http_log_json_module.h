@@ -23,28 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_KASHA_STR_H__
-#define __NGX_KASHA_STR_H__
-
-#include <ngx_core.h>
-
-const char *
-ngx_http_log_json_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len);
-
-u_char *
-ngx_http_log_json_str_dup(ngx_pool_t *pool, ngx_str_t *src);
-
-ngx_str_t *
-ngx_http_log_json_str_dup_from_buf_len(ngx_pool_t *pool,
-        ngx_str_t *src, size_t len);
-
-u_char *
-ngx_http_log_json_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len);
+#ifndef __NGX_HTTP_LOG_JSON_MODULE_H__
+#define __NGX_HTTP_LOG_JSON_MODULE_H__
 
 ngx_int_t
-ngx_http_log_json_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst);
+ngx_http_log_json_needs_body_filter();
 
-ngx_uint_t
-ngx_http_log_json_str_split_count(ngx_str_t *value, u_char separator);
+ngx_int_t
+ngx_http_log_json_needs_header_filter();
 
-#endif //__NGX_KASHA_STR_H__
+#endif // __NGX_HTTP_LOG_JSON_MODULE_H__
+
