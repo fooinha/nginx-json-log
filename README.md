@@ -54,6 +54,8 @@ For this, known or previously setted variables, can be used by using the '$' bef
 
 Common HTTP nginx builtin variables like $uri, or any other variable set by other handler modules can be used.
 
+Additional variables are provided by this module. See the available variables below at [Variables section](#variables).
+
 The output is sent to the location specified by the first http_log_json_format argument.
 The possible output locations are:
 
@@ -214,41 +216,94 @@ The format to use when writing to output destination.
 
 ---
 
-* Syntax: **"http_log_json_kafka_compression** _compression_codec_;
+* Syntax: **http_log_json_kafka_compression** _compression_codec_;
 * Default: snappy
 * Context: http main
 
 ---
 
-* Syntax: **"http_log_json_kafka_log_level** _numeric_log_level_;
+* Syntax: **http_log_json_kafka_log_level** _numeric_log_level_;
 * Default: 6
 * Context: http main
 
 ---
 
-* Syntax: **"http_log_json_kafka_max_retries** _numeric_;
+* Syntax: **http_log_json_kafka_max_retries** _numeric_;
 * Default: 0
 * Context: http main
 
 ---
 
-* Syntax: **"http_log_json_kafka_buffer_max_messages** _numeric_;
+* Syntax: **http_log_json_kafka_buffer_max_messages** _numeric_;
 * Default: 100000
 * Context: http main
 
 ---
 
-* Syntax: **"http_log_json_kafka_backoff_ms** _numeric_;
+* Syntax: **http_log_json_kafka_backoff_ms** _numeric_;
 * Default: 10
 * Context: http main
 
 ---
 
-* Syntax: **"http_log_json_kafka_partition** _partition_;
+* Syntax: **http_log_json_kafka_partition** _partition_;
 * Default: RD_KAFKA_PARTITION_UA
 * Context: http local
 
+---
 
+* Syntax: **http_log_json_req_body_limit** _size_;
+* Default: 512
+* Context: local
+
+Limits the body size to log.
+Argument is a size string. May be 1k or 1M, but avoid this!
+
+### Variables
+
+#### $http_log_json_req_headers;
+
+Creates a json object with all request headers.
+
+Example:
+
+```
+    "req": {
+        "headers": {
+            "Host": "localhost",
+            "User-Agent": "curl/7.52.1",
+            "Accept": "*/*"
+        }
+    }
+```
+
+#### $http_log_json_req_body;
+
+Log request body encoded as base64.
+It requires proxy_pass configuration at logging location.
+
+Example:
+
+```
+    "req": {
+        "body": "Zm9v"
+    }
+```
+#### $http_log_json_resp_headers;
+
+Creates a json object with available response headers.
+
+Example:
+
+```
+        resp": {
+        "headers": {
+          "Last-Modified": "Sat, 01 Apr 2017 13:34:28 GMT",
+          "ETag": "\"58dfac64-12\"",
+          "X-Foo": "bar",
+          "Accept-Ranges": "bytes"
+        }
+```
 
 ### Build
 
@@ -368,9 +423,9 @@ Percentage of the requests served within a certain time (ms)
   99%      1
  100%    115 (longest request)
 
-real	1m36.057s
-user	0m5.390s
-sys	1m22.040s
+real   1m36.057s
+user   0m5.390s
+sys   1m22.040s
 
 $ wc -l /tmp/1M.log
 1000000 /tmp/1M.log 
@@ -435,7 +490,8 @@ Percentage of the requests served within a certain time (ms)
   99%      2
  100%   1022 (longest request)
 
-real	1m43.328s
-user	0m5.770s
-sys	1m21.380s
+real   1m43.328s
+user   0m5.770s
+sys   1m21.380s
 ```
+

@@ -1,3 +1,9 @@
+Changes with ngx-http-log-json 0.0.4                                 4 Apr 2017
+    *) module variable $http_log_json_req_headers
+    *) module variable $http_log_json_resp_headers
+    *) module variable $http_log_json_req_body
+    *) local directive http_log_json_req_body_limit
+
 Changes with ngx-http-log-json 0.0.3                                31 Mar 2017
 
     *) allow to write to multiple destination with differente formats

@@ -1,3 +1,28 @@
+/*
+ * Copyright (C) 2017 Paulo Pacheco
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
@@ -8,7 +33,7 @@
 #include <jansson.h>
 #include "ngx_http_log_json_text.h"
 #include "ngx_http_log_json_str.h"
-
+#include "ngx_http_log_json_variables.h"
 
 struct ngx_http_log_json_output_cxt_s {
     /* array to keep levels node values */
@@ -17,6 +42,37 @@ struct ngx_http_log_json_output_cxt_s {
     json_t      *  root;
     ngx_array_t *  items;
 };
+
+static const char * TYPE_JSON_STRING     = "JSON_STRING";
+static const char * TYPE_JSON_INTEGER    = "JSON_INTEGER";
+static const char * TYPE_JSON_REAL       = "JSON_REAL";
+static const char * TYPE_JSON_TRUE       = "JSON_TRUE";
+static const char * TYPE_JSON_FALSE      = "JSON_FALSE";
+static const char * TYPE_JSON_NULL       = "JSON_NULL";
+
+const char * ngx_http_log_json_type_string() {
+    return TYPE_JSON_STRING;
+}
+
+const char * ngx_http_log_json_type_integer() {
+    return TYPE_JSON_INTEGER;
+}
+
+const char * ngx_http_log_json_type_real() {
+    return TYPE_JSON_REAL;
+}
+
+const char * ngx_http_log_json_type_true() {
+    return TYPE_JSON_TRUE;
+}
+
+const char * ngx_http_log_json_type_false() {
+    return TYPE_JSON_FALSE;
+}
+
+const char * ngx_http_log_json_type_null() {
+    return TYPE_JSON_NULL;
+}
 
 typedef struct ngx_http_log_json_output_cxt_s ngx_http_log_json_output_cxt_t;
 
@@ -32,7 +88,7 @@ typedef struct ngx_http_log_json_value_s       ngx_http_log_json_value_t;
 static ngx_pool_t * current_pool;
 
 /* Helper functions for allocate/free from memory pool for libjsasson. */
-static void
+void
 set_current_mem_pool(ngx_pool_t *pool) {
     current_pool = pool;
 }
@@ -41,7 +97,6 @@ static ngx_pool_t *
 get_current_mem_pool() {
     return current_pool;
 }
-
 
 ngx_int_t
 ngx_http_log_json_output_cxt_new(
@@ -290,12 +345,16 @@ ngx_http_log_json_output_add_item(
         ngx_http_log_json_output_cxt_t *output_ctx,
         ngx_http_log_json_item_t *item) {
 
-    ngx_str_t value;
-    uint32_t levels = 0;
-    json_t *parent = output_ctx->root;
+    ngx_str_t                   value;
+    uint32_t                    levels = 0;
+    json_t                      *parent = output_ctx->root;
 
-    ngx_http_complex_value_t *ccv = (ngx_http_complex_value_t *) item->ccv;
-    ngx_int_t err = ngx_http_complex_value(r, ccv, &value);
+    ngx_str_t                   lcname;
+    ngx_uint_t                  varkey;
+    ngx_http_variable_value_t   *vv;
+    const char                  *key  = NULL;
+    ngx_http_complex_value_t    *ccv = (ngx_http_complex_value_t *) item->ccv;
+    ngx_int_t                   err = ngx_http_complex_value(r, ccv, &value);
 
     /* if complex value compilation failed */
     if (err) {
@@ -316,8 +375,23 @@ ngx_http_log_json_output_add_item(
     }
 
     /* add value to parent location */
-    const char *key = ngx_http_log_json_label_key_dup(current_pool,
+    key = ngx_http_log_json_label_key_dup(current_pool,
             item->name, item->name->len);
+
+    if (ngx_http_log_json_is_local_variable(&item->var_name)) {
+           lcname.len = item->var_name.len;
+           lcname.data = ngx_pcalloc(r->pool, item->var_name.len);
+           varkey = ngx_hash_strlow(lcname.data,
+                   item->var_name.data, item->var_name.len);
+
+           vv = ngx_http_get_variable(r, &item->var_name, varkey);
+
+           if (vv && vv->data) {
+               /* puts value node under parent */
+               json_object_set(parent, key, (json_t *) vv->data);
+               return NGX_OK;
+           }
+    }
 
     ngx_http_log_json_add_json_node(parent,
             item->is_array, item->type,
@@ -333,8 +407,9 @@ ngx_http_log_json_items_dump_text(ngx_http_request_t *r,
 
     ngx_http_log_json_output_cxt_t ctx;
     ngx_http_log_json_item_t      *item;
-    size_t                        i;
+    size_t                        i, dump_len;
     char                          *txt = NULL;
+    char                          *dump = NULL;
 
     set_current_mem_pool(r->pool);
 
@@ -352,11 +427,23 @@ ngx_http_log_json_items_dump_text(ngx_http_request_t *r,
         ngx_http_log_json_output_add_item(r, &ctx, &item[i]);
     }
 
-    txt = json_dumps(ctx.root,
+    dump = json_dumps(ctx.root,
             JSON_INDENT(0) | JSON_REAL_PRECISION(2) | JSON_COMPACT);
 
     set_current_mem_pool(NULL);
 
+    if (!dump) {
+        return NULL;
+    }
+
+    dump_len = strlen(dump);
+    txt = ngx_pcalloc(r->pool, dump_len + 2);
+    if (!txt) {
+        return NULL;
+    }
+
+    ngx_memcpy(txt, dump, dump_len);
+    txt[dump_len] = '\n';
+
     return txt;
 }
-
