@@ -1,0 +1,52 @@
+version: '3'
+
+
+services:
+
+    zookeeper:
+        hostname: zookeeper
+        container_name: nginx-json-zookeeper
+        image: wurstmeister/zookeeper
+        ports:
+          - "2181:2181"
+        expose:
+          - 2181
+        network_mode: bridge
+
+    kafka:
+        hostname: kafka
+        container_name: nginx-json-kafka
+        image: wurstmeister/kafka
+        depends_on:
+          - zookeeper
+        links:
+          - zookeeper:zk
+        ports:
+          - "9092:9092"
+        expose:
+          - 9092
+        network_mode: bridge
+        environment:
+          KAFKA_ADVERTISED_HOST_NAME: "kafka"
+          KAFKA_ADVERTISED_PORT: "9092"
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+
+    nginx:
+        build: ./nginx-http-log-json
+        hostname: nginx
+        container_name: nginx-json
+        depends_on:
+          - kafka
+        links:
+          - kafka:kafka
+        ports:
+          - "80:80"
+        expose:
+          - 80
+        network_mode: bridge
+        tty: true
+        privileged: true
+        cap_add:
+          - ALL
