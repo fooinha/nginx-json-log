@@ -46,3 +46,30 @@ ngx_http_log_json_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
     dst->len = src->len;
     return NGX_OK;
 }
+
+/* counts the number of items found in str `value` separated
+ * by given `separator`.
+ */
+ngx_uint_t
+ngx_http_log_json_str_split_count(ngx_str_t *value, u_char separator) {
+
+    ngx_uint_t ret = 0;
+    u_char has = 0;
+    size_t i;
+
+    if (!value || !value->data || !value->len)
+        return ret;
+
+    for (i=0; i < value->len; ++i) {
+        if (has && value->data[i] == separator) {
+            ++ret;
+            has = 0;
+            continue;
+        }
+        if (!has && !isspace(value->data[i])
+                && value->data[i] != separator) {
+            has = 1;
+        }
+    }
+    return ret;
+}

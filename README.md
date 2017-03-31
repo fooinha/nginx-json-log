@@ -14,6 +14,8 @@ It also allows to log complex and multi-level JSON documents.
 
 It supports logging to text file or to a kafka topic.
 
+It supports multiple output destinations with multiple formats for a location.
+
 ## Use cases
 
 That are many use cases.
@@ -64,7 +66,7 @@ The possible output locations are:
 ##### A simple configuration example
 
 ```yaml
-     http_log_json_format file:/tmp/log '
+     http_log_json_format my_log file:/tmp/log '
         src.ip                      $remote_addr;
         src.port                    $remote_port;
         dst.ip                      $server_addr;
@@ -83,6 +85,8 @@ The possible output locations are:
         a:i:list                    1;
         a:list                      string;
      ';
+
+     http_log_json_output file:/tmp/log my_log;'
 ```
 
 This will produce the following JSON line to '/tmp/log' file .
@@ -132,10 +136,11 @@ To ease reading, it's shown here formatted with newlines.
                         return "";
         }';
 
-       http_log_json_format file:/tmp/log '
-        comm.http.server_name       $server_name;
-        perl.bar                    $bar;
+       http_log_json_format with_perl '
+            comm.http.server_name       $server_name;
+            perl.bar                    $bar;
        ';
+       http_log_json_output file:/tmp/log with_perl'
  ```
 
  A request sent to **/bar** .
@@ -157,7 +162,25 @@ To ease reading, it's shown here formatted with newlines.
 ### Directives
 
 ---
-* Syntax: **http_log_json_format** _location_ { _format_ } _if_=...;
+* Syntax: **http_log_json_format** _format_name_ { _format_ } _if_=...;
+* Default: —
+* Context: http location
+
+###### _format_name_ ######
+
+Specifies a format name that can be used by a **http_log_json_output** directive
+
+###### _format_ ######
+
+See details above.
+
+###### _if_=... ######
+
+Works the same way as _if_ argument from http [access_log](http://nginx.org/en/docs/http/ngx_http_log_module.html#access_log) directive.
+
+---
+
+* Syntax: **http_log_json_output** _location_ _format_name_ 
 * Default: —
 * Context: http location
 
@@ -173,15 +196,9 @@ For a **kafka:** type the value part will be the topic name. e.g. **kafka:** top
 
 The kafka output only happens if a list of brokers is defined by **http_log_json_kafka_brokers** directive.
 
-###### _format_ ######
+###### _format_name_ ######
 
-See details above.
-
----
-
-* Syntax: **"http_log_json_kafka_partition** _partition_;
-* Default: RD_KAFKA_PARTITION_UA
-* Context: http local
+The format to use when writing to output destination.
 
 ---
 
@@ -225,10 +242,13 @@ See details above.
 * Default: 10
 * Context: http main
 
+---
 
-###### _if_=... ######
+* Syntax: **"http_log_json_kafka_partition** _partition_;
+* Default: RD_KAFKA_PARTITION_UA
+* Context: http local
 
-Works the same way as _if_ argument from http [access_log](http://nginx.org/en/docs/http/ngx_http_log_module.html#access_log) directive.
+
 
 ### Build
 

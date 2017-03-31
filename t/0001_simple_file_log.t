@@ -71,7 +71,9 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format file:test.1.json 'literal root;';
+            http_log_json_format json_1 'literal root;';
+
+            http_log_json_output file:test.1.json json_1;
      }
 --- request
     GET /kasha
@@ -83,14 +85,16 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format file:test.2.json '
+
+            http_log_json_format json_2 '
                b:true         true;
                b:false        false;
                n:null         whatever;
                r:real         1.1;
                i:int          2014;
-            literal root;
-     ';
+               literal        root;
+            ';
+            http_log_json_output file:test.2.json json_2;
      }
 --- request
     GET /kasha
@@ -102,14 +106,16 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format file:test.3.json '
+
+            http_log_json_format json_3 '
                b:true         true;
                b:false        false;
                n:null         whatever;
                r:real         1.1;
                i:int          2014;
-            literal root;
-     ' if=0;
+               literal root;
+            ' if=0;
+            http_log_json_output file:test.3.json json_3;
      }
 --- request
     GET /kasha
@@ -121,10 +127,11 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format file:test.4.json '
+            http_log_json_format json_4 '
                a:i:list       1;
                a:list     string;
-     ';
+            ';
+            http_log_json_output file:test.4.json json_4;
      }
 --- request
     GET /kasha
