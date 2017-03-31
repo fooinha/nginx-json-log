@@ -11,6 +11,7 @@ static const char * TYPE_JSON_NULL       = "JSON_NULL";
 struct ngx_http_log_json_item_s {
     const char                           *type;
     ngx_str_t                            *name;
+    ngx_str_t                            var_name;
     ngx_int_t                            is_array;
     ngx_http_compile_complex_value_t     *ccv;
 };

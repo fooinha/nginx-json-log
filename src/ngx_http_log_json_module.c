@@ -11,8 +11,9 @@
 #include "ngx_http_log_json_str.h"
 #include "ngx_http_log_json_text.h"
 #include "ngx_http_log_json_kafka.h"
+#include "ngx_http_log_json_variables.h"
 
-#define HTTP_LOG_JSON_VER    "0.0.3"
+#define HTTP_LOG_JSON_VER    "0.0.4"
 
 #define HTTP_LOG_JSON_FILE_OUT_LEN (sizeof("file:") - 1)
 #define HTTP_LOG_JSON_LOG_HAS_FILE_PREFIX(str)                                \
@@ -133,8 +134,8 @@ static void *        ngx_http_log_json_create_loc_conf(ngx_conf_t *cf);
 static ngx_int_t     ngx_http_log_json_init_worker(ngx_cycle_t *cycle);
 static void          ngx_http_log_json_exit_worker(ngx_cycle_t *cycle);
 
+static ngx_int_t ngx_http_log_json_pre_config(ngx_conf_t *cf);
 static ngx_int_t     ngx_http_log_json_init(ngx_conf_t *cf);
-
 
 /* http_log_json commands */
 static ngx_command_t ngx_http_log_json_commands[] = {
@@ -222,7 +223,7 @@ static ngx_command_t ngx_http_log_json_commands[] = {
 
 /* http_log_json config preparation */
 static ngx_http_module_t ngx_http_log_json_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_log_json_pre_config,          /* preconfiguration */
     ngx_http_log_json_init,                /* postconfiguration */
     ngx_http_log_json_create_main_conf,    /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -536,6 +537,26 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
 }
 
 static ngx_int_t
+ngx_http_log_json_pre_config(ngx_conf_t *cf) {
+    ngx_http_variable_t         *v;
+    size_t                      l = 0, local_vars_len;
+    ngx_http_variable_t         *local_vars = NULL;
+
+    local_vars = ngx_http_log_json_variables(&local_vars_len);
+
+    /* Register variables */
+    for (l = 0; l < local_vars_len ; ++l) {
+        v = ngx_http_add_variable(cf,
+                &local_vars[l].name, local_vars[l].flags);
+        if (v == NULL) {
+            return NGX_ERROR;
+        }
+        *v = local_vars[l];
+    }
+    return NGX_OK;
+}
+
+static ngx_int_t
 ngx_http_log_json_init(ngx_conf_t *cf) {
 
     ngx_http_handler_pt        *h;
@@ -666,6 +687,14 @@ ngx_http_log_json_read_format(ngx_conf_t *cf,
         }
 
         item->name = key_str;
+
+        if (*value_str->data == '$') {
+            item->var_name.data= ngx_pcalloc(cf->pool, value_str->len - 1);
+            ngx_memcpy(item->var_name.data,
+                    value_str->data + 1, value_str->len - 1);
+            item->var_name.len = value_str->len - 1;
+        }
+
         item->is_array = 0;
 
         /* Check and save type from name prefix */
