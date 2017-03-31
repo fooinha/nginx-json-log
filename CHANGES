@@ -1,3 +1,10 @@
+Changes with ngx-http-log-json 0.0.3                                31 Mar 2017
+
+    *) allow to write to multiple destination with differente formats
+    *) http_log_json_format and http_log_json_output directives separation
+    *) significant overhaul for hiding json implementation
+    *) re-factoring for allowing multiple destination/format
+
 Changes with ngx-http-log-json 0.0.2                                26 Mar 2017
 
     *) upgrade to nginx 1.11.10 support

@@ -14,6 +14,8 @@ It also allows to log complex and multi-level JSON documents.
 
 It supports logging to text file or to a kafka topic.
 
+It supports multiple output destinations with multiple formats for a location.
+
 ## Use cases
 
 That are many use cases.
@@ -64,7 +66,7 @@ The possible output locations are:
 ##### A simple configuration example
 
 ```yaml
-     http_log_json_format file:/tmp/log '
+     http_log_json_format my_log '
         src.ip                      $remote_addr;
         src.port                    $remote_port;
         dst.ip                      $server_addr;
@@ -83,6 +85,8 @@ The possible output locations are:
         a:i:list                    1;
         a:list                      string;
      ';
+
+     http_log_json_output file:/tmp/log my_log;'
 ```
 
 This will produce the following JSON line to '/tmp/log' file .
@@ -132,10 +136,11 @@ To ease reading, it's shown here formatted with newlines.
                         return "";
         }';
 
-       http_log_json_format file:/tmp/log '
-        comm.http.server_name       $server_name;
-        perl.bar                    $bar;
+       http_log_json_format with_perl '
+            comm.http.server_name       $server_name;
+            perl.bar                    $bar;
        ';
+       http_log_json_output file:/tmp/log with_perl'
  ```
 
  A request sent to **/bar** .
@@ -157,7 +162,25 @@ To ease reading, it's shown here formatted with newlines.
 ### Directives
 
 ---
-* Syntax: **http_log_json_format** _location_ { _format_ } _if_=...;
+* Syntax: **http_log_json_format** _format_name_ { _format_ } _if_=...;
+* Default: —
+* Context: http location
+
+###### _format_name_ ######
+
+Specifies a format name that can be used by a **http_log_json_output** directive
+
+###### _format_ ######
+
+See details above.
+
+###### _if_=... ######
+
+Works the same way as _if_ argument from http [access_log](http://nginx.org/en/docs/http/ngx_http_log_module.html#access_log) directive.
+
+---
+
+* Syntax: **http_log_json_output** _location_ _format_name_ 
 * Default: —
 * Context: http location
 
@@ -173,15 +196,9 @@ For a **kafka:** type the value part will be the topic name. e.g. **kafka:** top
 
 The kafka output only happens if a list of brokers is defined by **http_log_json_kafka_brokers** directive.
 
-###### _format_ ######
+###### _format_name_ ######
 
-See details above.
-
----
-
-* Syntax: **"http_log_json_kafka_partition** _partition_;
-* Default: RD_KAFKA_PARTITION_UA
-* Context: http local
+The format to use when writing to output destination.
 
 ---
 
@@ -225,10 +242,13 @@ See details above.
 * Default: 10
 * Context: http main
 
+---
 
-###### _if_=... ######
+* Syntax: **"http_log_json_kafka_partition** _partition_;
+* Default: RD_KAFKA_PARTITION_UA
+* Context: http local
 
-Works the same way as _if_ argument from http [access_log](http://nginx.org/en/docs/http/ngx_http_log_module.html#access_log) directive.
+
 
 ### Build
 
@@ -284,3 +304,138 @@ Result: PASS
 
 ```
 
+#### Load tests
+
+Making 1M requests to local destination.
+
+##### Logging to file
+
+
+```
+$ time ab -n 1000000 -c 4 http://127.0.0.1/mega
+This is ApacheBench, Version 2.3 <$Revision: 1757674 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient)
+Completed 100000 requests
+Completed 200000 requests
+Completed 300000 requests
+Completed 400000 requests
+Completed 500000 requests
+Completed 600000 requests
+Completed 700000 requests
+Completed 800000 requests
+Completed 900000 requests
+Completed 1000000 requests
+Finished 1000000 requests
+
+
+Server Software:        nginx/1.10.3
+Server Hostname:        127.0.0.1
+Server Port:            80
+
+Document Path:          /mega
+Document Length:        169 bytes
+
+Concurrency Level:      4
+Time taken for tests:   95.224 seconds
+Complete requests:      1000000
+Failed requests:        0
+Non-2xx responses:      1000000
+Total transferred:      319000000 bytes
+HTML transferred:       169000000 bytes
+Requests per second:    10501.55 [#/sec] (mean)
+Time per request:       0.381 [ms] (mean)
+Time per request:       0.095 [ms] (mean, across all concurrent requests)
+Transfer rate:          3271.48 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.2      0      64
+Processing:     0    0   0.4      0      98
+Waiting:        0    0   0.4      0      97
+Total:          0    0   0.5      0     115
+
+Percentage of the requests served within a certain time (ms)
+  50%      0
+  66%      0
+  75%      0
+  80%      0
+  90%      1
+  95%      1
+  98%      1
+  99%      1
+ 100%    115 (longest request)
+
+real	1m36.057s
+user	0m5.390s
+sys	1m22.040s
+
+$ wc -l /tmp/1M.log
+1000000 /tmp/1M.log 
+```
+
+##### Logging to kafka topic
+
+```
+$ time ab -n 1000000 -c 4 http://127.0.0.1/mega
+This is ApacheBench, Version 2.3 <$Revision: 1757674 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient)
+Completed 100000 requests
+Completed 200000 requests
+Completed 300000 requests
+Completed 400000 requests
+Completed 500000 requests
+Completed 600000 requests
+Completed 700000 requests
+Completed 800000 requests
+Completed 900000 requests
+Completed 1000000 requests
+Finished 1000000 requests
+
+
+Server Software:        nginx/1.10.3
+Server Hostname:        127.0.0.1
+Server Port:            80
+
+Document Path:          /mega
+Document Length:        169 bytes
+
+Concurrency Level:      4
+Time taken for tests:   102.439 seconds
+Complete requests:      1000000
+Failed requests:        0
+Non-2xx responses:      1000000
+Total transferred:      319000000 bytes
+HTML transferred:       169000000 bytes
+Requests per second:    9761.95 [#/sec] (mean)
+Time per request:       0.410 [ms] (mean)
+Time per request:       0.102 [ms] (mean, across all concurrent requests)
+Transfer rate:          3041.08 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.3      0      93
+Processing:     0    0   2.1      0    1021
+Waiting:        0    0   2.1      0    1021
+Total:          0    0   2.1      0    1022
+
+Percentage of the requests served within a certain time (ms)
+  50%      0
+  66%      0
+  75%      0
+  80%      0
+  90%      1
+  95%      1
+  98%      1
+  99%      2
+ 100%   1022 (longest request)
+
+real	1m43.328s
+user	0m5.770s
+sys	1m21.380s
+```
