@@ -3,8 +3,15 @@
 
 #include <ngx_core.h>
 
+const char *
+ngx_http_log_json_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len);
+
 u_char *
 ngx_http_log_json_str_dup(ngx_pool_t *pool, ngx_str_t *src);
+
+ngx_str_t *
+ngx_http_log_json_str_dup_from_buf_len(ngx_pool_t *pool,
+        ngx_str_t *src, size_t len);
 
 u_char *
 ngx_http_log_json_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len);

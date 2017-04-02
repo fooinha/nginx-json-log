@@ -32,7 +32,7 @@ typedef struct ngx_http_log_json_value_s       ngx_http_log_json_value_t;
 static ngx_pool_t * current_pool;
 
 /* Helper functions for allocate/free from memory pool for libjsasson. */
-static void
+void
 set_current_mem_pool(ngx_pool_t *pool) {
     current_pool = pool;
 }
@@ -41,7 +41,6 @@ static ngx_pool_t *
 get_current_mem_pool() {
     return current_pool;
 }
-
 
 ngx_int_t
 ngx_http_log_json_output_cxt_new(

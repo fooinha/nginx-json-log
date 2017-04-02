@@ -15,6 +15,40 @@ ngx_http_log_json_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
     return dst;
 }
 
+ngx_str_t *
+ngx_http_log_json_str_dup_from_buf_len(ngx_pool_t *pool,
+        ngx_str_t *src, size_t len) {
+
+    ngx_str_t *str = ngx_pcalloc(pool, sizeof(ngx_str_t));
+    if (str == NULL) {
+        return NULL;
+    }
+
+    str->data = ngx_pcalloc(pool, len);
+    if (str->data == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(str->data, src, len);
+    str->len = len;
+
+    return str;
+}
+
+const char *
+ngx_http_log_json_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len) {
+
+    char *dst;
+
+    dst = ngx_pcalloc(pool, len + 1);
+    if (dst == NULL) {
+        return NULL;
+    }
+
+    ngx_memcpy(dst, src, len);
+    return dst;
+}
+
 u_char *
 ngx_http_log_json_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
 
