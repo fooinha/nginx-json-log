@@ -11,8 +11,9 @@
 #include "ngx_http_log_json_str.h"
 #include "ngx_http_log_json_text.h"
 #include "ngx_http_log_json_kafka.h"
+#include "ngx_http_log_json_variables.h"
 
-#define HTTP_LOG_JSON_VER    "0.0.3"
+#define HTTP_LOG_JSON_VER    "0.0.4"
 
 #define HTTP_LOG_JSON_FILE_OUT_LEN (sizeof("file:") - 1)
 #define HTTP_LOG_JSON_LOG_HAS_FILE_PREFIX(str)                                \
@@ -25,6 +26,9 @@
     (ngx_strncmp(str->data,                                                   \
                  http_log_json_kafka_prefix,                                  \
                  HTTP_LOG_JSON_KAFKA_OUT_LEN) ==  0 )
+
+
+#define HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT 512
 
 /* output prefixes */
 static const char *http_log_json_file_prefix              = "file:";
@@ -68,6 +72,7 @@ struct ngx_http_log_json_format_s {
     ngx_array_t                      *items;    /* format items */
     ngx_http_complex_value_t         *filter;    /* filter output */
 };
+typedef struct ngx_http_log_json_format_s     ngx_http_log_json_format_t;
 
 struct ngx_http_log_json_loc_kafka_conf_s {
     rd_kafka_topic_t                 *rkt;       /* kafka topic */
@@ -92,13 +97,12 @@ struct ngx_http_log_json_main_kafka_conf_s {
 typedef struct ngx_http_log_json_main_kafka_conf_s
                                            ngx_http_log_json_main_kafka_conf_t;
 typedef struct ngx_http_log_json_loc_kafka_conf_s
-                                            ngx_http_log_json_loc_kafka_conf_t;
-
+                                           ngx_http_log_json_loc_kafka_conf_t;
 struct ngx_http_log_json_main_conf_s {
-    ngx_http_log_json_main_kafka_conf_t       kafka;
+    ngx_http_log_json_main_kafka_conf_t  kafka;
+    ngx_queue_t                          conn_req_body;  /* request body saved
+                                                           per connection. */
 };
-
-typedef struct ngx_http_log_json_format_s     ngx_http_log_json_format_t;
 
 struct ngx_http_log_json_output_location_s {
     ngx_str_t                                 location;
@@ -106,7 +110,6 @@ struct ngx_http_log_json_output_location_s {
     ngx_http_log_json_format_t                format;
     ngx_open_file_t                           * file;
     ngx_http_log_json_loc_kafka_conf_t        kafka;
-
 };
 
 typedef struct ngx_http_log_json_output_location_s
@@ -115,6 +118,7 @@ typedef struct ngx_http_log_json_output_location_s
 struct ngx_http_log_json_loc_conf_s {
     ngx_array_t                               *locations;
     ngx_array_t                               *formats;
+    size_t                                    req_body_limit;
 };
 
 typedef struct ngx_http_log_json_loc_conf_s      ngx_http_log_json_loc_conf_t;
@@ -127,14 +131,18 @@ static char *        ngx_http_log_json_loc_format_block(ngx_conf_t *cf,
 static char *
 ngx_http_log_json_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
+static char *
+ngx_http_log_json_loc_req_body_limit(ngx_conf_t *cf,
+        ngx_command_t *cmd, void *conf);
+
 static void *        ngx_http_log_json_create_main_conf(ngx_conf_t *cf);
 static void *        ngx_http_log_json_create_loc_conf(ngx_conf_t *cf);
 
 static ngx_int_t     ngx_http_log_json_init_worker(ngx_cycle_t *cycle);
 static void          ngx_http_log_json_exit_worker(ngx_cycle_t *cycle);
 
+static ngx_int_t ngx_http_log_json_pre_config(ngx_conf_t *cf);
 static ngx_int_t     ngx_http_log_json_init(ngx_conf_t *cf);
-
 
 /* http_log_json commands */
 static ngx_command_t ngx_http_log_json_commands[] = {
@@ -149,6 +157,13 @@ static ngx_command_t ngx_http_log_json_commands[] = {
     { ngx_string("http_log_json_output"),
         NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
         ngx_http_log_json_loc_output,
+        NGX_HTTP_LOC_CONF_OFFSET,
+        0,
+        NULL
+    },
+    { ngx_string("http_log_json_req_body_limit"),
+        NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+        ngx_http_log_json_loc_req_body_limit,
         NGX_HTTP_LOC_CONF_OFFSET,
         0,
         NULL
@@ -222,7 +237,7 @@ static ngx_command_t ngx_http_log_json_commands[] = {
 
 /* http_log_json config preparation */
 static ngx_http_module_t ngx_http_log_json_module_ctx = {
-    NULL,                                  /* preconfiguration */
+    ngx_http_log_json_pre_config,          /* preconfiguration */
     ngx_http_log_json_init,                /* postconfiguration */
     ngx_http_log_json_create_main_conf,    /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -248,15 +263,21 @@ ngx_module_t ngx_http_log_json_module = {
     NGX_MODULE_V1_PADDING
 };
 
+
 /* Initialized stuff per http_log_json worker.*/
 static ngx_int_t ngx_http_log_json_init_worker(ngx_cycle_t *cycle) {
 
+    ngx_http_log_json_main_conf_t  *conf =
+        ngx_http_cycle_get_module_main_conf(cycle, ngx_http_log_json_module);
+
+
+    //TODO:CONFIG
+    ngx_queue_init(&conf->conn_req_body);
+
+    /* From this point we just are init kafka stuff */
     if (http_log_json_has_kafka_locations == NGX_CONF_UNSET ) {
         return NGX_OK;
     }
-
-    ngx_http_log_json_main_conf_t  *conf =
-        ngx_http_cycle_get_module_main_conf(cycle, ngx_http_log_json_module);
 
     /* kafka */
     /* - default values - */
@@ -349,7 +370,6 @@ static ngx_int_t ngx_http_log_json_init_worker(ngx_cycle_t *cycle) {
             conf_debug_key,
             &conf_all_value);
 #endif
-
     /* create kafka handler */
     conf->kafka.rk = http_log_json_kafka_producer_new(
             cycle->pool,
@@ -384,8 +404,8 @@ ngx_http_log_json_exit_worker(ngx_cycle_t *cycle) {
     //TODO: cleanup kafka stuff
 }
 
-static ngx_int_t ngx_http_log_json_write_sink_file(ngx_fd_t fd,
-        const char *txt) {
+static ngx_int_t
+ngx_http_log_json_write_sink_file(ngx_fd_t fd, const char *txt) {
 
     size_t to_write = strlen(txt);
     size_t written = ngx_write_fd(fd, (u_char *)txt, strlen(txt));
@@ -396,19 +416,140 @@ static ngx_int_t ngx_http_log_json_write_sink_file(ngx_fd_t fd,
     return NGX_OK;
 }
 
-/* handler - format and print */
+static size_t
+ngx_http_log_json_get_req_body_limit(ngx_http_request_t *r) {
+    ngx_http_log_json_loc_conf_t        *lc;
+
+    lc = ngx_http_get_module_loc_conf(r, ngx_http_log_json_module);
+
+    if (!lc) {
+        return HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT;
+    }
+    return lc->req_body_limit;
+}
+
+ngx_queue_t * ngx_http_log_json_get_req_body_queue_cb(ngx_http_request_t *r) {
+
+    ngx_http_log_json_main_conf_t       *mcf;
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_log_json_module);
+    return &mcf->conn_req_body;
+}
+
+static ngx_http_request_body_filter_pt   ngx_http_next_request_body_filter;
+/* save body filter */
+static ngx_int_t
+ngx_http_log_json_save_body_filter(ngx_http_request_t *r,
+        ngx_chain_t *in) {
+
+    ngx_http_log_json_main_conf_t      *mcf;
+    ngx_http_log_json_req_body_t       *req_body;
+    ngx_chain_t                        *cl;
+    size_t                             len = 0;
+    size_t                             count = 0;
+    size_t                        limit = HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT;
+    u_char                             *pos = NULL;
+    ngx_queue_t                        *q, *values;
+
+    /* Verify if this request body was already saved */
+    values = ngx_http_log_json_get_req_body_queue_cb(r);
+
+    if (!values) {
+        return ngx_http_next_request_body_filter(r, in);
+    }
+    for (q = ngx_queue_head(values);
+            q != ngx_queue_sentinel(values);
+            q = ngx_queue_next(q)) {
+        req_body = ngx_queue_data(q, ngx_http_log_json_req_body_t, queue);
+        if (req_body->r == r) {
+            //TODO:  support body append from multiple filter calls
+            return ngx_http_next_request_body_filter(r, in);
+        }
+    }
+
+    req_body = ngx_pcalloc(r->pool,sizeof(ngx_http_log_json_req_body_t));
+    if (!req_body) {
+        return ngx_http_next_request_body_filter(r, in);
+    }
+
+    limit = ngx_http_log_json_get_req_body_limit(r);
+
+    /* Saves request pointer  */
+    req_body->r = r;
+
+    /* Finds out the len below limit bytes to save */
+    for (cl = in; cl; cl = cl->next) {
+
+        len = cl->buf->last - cl->buf->pos;
+
+        if (len < (limit - req_body->payload.len)) {
+            req_body->payload.len += len;
+        } else {
+            len = (limit - req_body->payload.len);
+            req_body->payload.len = limit;
+        }
+
+        if (req_body->payload.len >= limit) {
+            req_body->payload.len = limit;
+            break;
+        }
+    }
+    /* Nothing to save from this iteration */
+    if (!req_body->payload.len) {
+        ngx_pfree(r->pool, req_body);
+        return ngx_http_next_request_body_filter(r, in);
+    }
+
+    //TODO:  support body append from multiple filter calls
+    req_body->payload.data = ngx_pcalloc(r->pool, req_body->payload.len);
+    if (! req_body->payload.data) {
+        //TODO: WARN
+        return ngx_http_next_request_body_filter(r, in);
+    }
+
+    /* Saves body payload */
+    pos = req_body->payload.data;
+    count = 0;
+    for (cl = in; cl; cl = cl->next) {
+
+        len = cl->buf->last - cl->buf->pos;
+        if (count + len >= req_body->payload.len) {
+            count = req_body->payload.len;
+            len = req_body->payload.len;
+        } else {
+            count += len;
+        }
+
+        ngx_memcpy(pos, cl->buf->pos, len);
+        pos += len;
+        if (count >= limit) {
+            break;
+        }
+    }
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_log_json_module);
+    ngx_queue_insert_tail(&mcf->conn_req_body, &req_body->queue);
+
+    return ngx_http_next_request_body_filter(r, in);
+}
+
+/* log handler - format and print */
 static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
 
-    ngx_http_log_json_loc_conf_t   *lc;
-    ngx_http_log_json_main_conf_t  *mcf;
-    ngx_str_t                      filter_val;
-    char                           *txt;
-    size_t                         i;
-    int                            err;
+    ngx_http_log_json_loc_conf_t        *lc;
+    ngx_http_log_json_main_conf_t       *mcf;
+    ngx_str_t                           filter_val;
+    char                                *txt;
+    size_t                              i;
+    int                                 err;
     ngx_http_log_json_output_location_t *arr;
     ngx_http_log_json_output_location_t *location;
 
     lc = ngx_http_get_module_loc_conf(r, ngx_http_log_json_module);
+
+
+    /*FIXME: Try to discard local upstream requests */
+    if (!r->upstream && r->lingering_time) {
+        return NGX_OK;
+    }
 
     /* Location to eat http_log_json was not found */
     if (!lc) {
@@ -425,6 +566,8 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
         ngx_strncasecmp((u_char *)"CONNECT", r->request_line.data, 7) == 0) {
         return NGX_OK;
     }
+
+    mcf = ngx_http_get_module_main_conf(r, ngx_http_log_json_module);
 
     arr = lc->locations->elts;
     for (i = 0; i < lc->locations->nelts; ++i) {
@@ -472,7 +615,6 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
         /* Write to kafka */
         if (location->type == NGX_HTTP_LOG_JSON_SINK_KAFKA) {
 
-            mcf = ngx_http_get_module_main_conf(r, ngx_http_log_json_module);
 
             /* don't do anything if no kafka brokers to send */
             if (! mcf->kafka.valid_brokers) {
@@ -536,6 +678,26 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
 }
 
 static ngx_int_t
+ngx_http_log_json_pre_config(ngx_conf_t *cf) {
+    ngx_http_variable_t         *v;
+    size_t                      l = 0, local_vars_len;
+    ngx_http_variable_t         *local_vars = NULL;
+
+    local_vars = ngx_http_log_json_variables(&local_vars_len);
+
+    /* Register variables */
+    for (l = 0; l < local_vars_len ; ++l) {
+        v = ngx_http_add_variable(cf,
+                &local_vars[l].name, local_vars[l].flags);
+        if (v == NULL) {
+            return NGX_ERROR;
+        }
+        *v = local_vars[l];
+    }
+    return NGX_OK;
+}
+
+static ngx_int_t
 ngx_http_log_json_init(ngx_conf_t *cf) {
 
     ngx_http_handler_pt        *h;
@@ -551,6 +713,11 @@ ngx_http_log_json_init(ngx_conf_t *cf) {
         return NGX_ERROR;
     }
     *h = ngx_http_log_json_log_handler;
+
+    /*TODO: only enable filters is needed */
+    ngx_http_next_request_body_filter = ngx_http_top_request_body_filter;
+    ngx_http_top_request_body_filter =  ngx_http_log_json_save_body_filter;
+
     return NGX_OK;
 }
 
@@ -618,8 +785,8 @@ ngx_http_log_json_read_format(ngx_conf_t *cf,
             return NGX_ERROR;
         }
 
-        key_str   = ngx_palloc(cf->pool, sizeof(ngx_str_t));
-        value_str = ngx_palloc(cf->pool, sizeof(ngx_str_t));
+        key_str   = ngx_pcalloc(cf->pool, sizeof(ngx_str_t));
+        value_str = ngx_pcalloc(cf->pool, sizeof(ngx_str_t));
 
         for (i=0; i < matched; i++) {
             ret = pcre_copy_substring((const char *)spec.data,
@@ -630,19 +797,19 @@ ngx_http_log_json_read_format(ngx_conf_t *cf,
             }
             /* i = 1 => key - item name */
             if (i == 1) {
-                key_str->data = ngx_palloc(cf->pool, ret);
+                key_str->data = ngx_pcalloc(cf->pool, ret);
                 key_str->len = ret;
                 ngx_cpystrn(key_str->data, (u_char *)value, ret+1);
             }
             /* i = 2 => value */
             if (i == 2) {
-                value_str->data = ngx_palloc(cf->pool, ret);
+                value_str->data = ngx_pcalloc(cf->pool, ret);
                 value_str->len = ret;
                 ngx_cpystrn(value_str->data, (u_char *)value, ret+1);
             }
         }
 
-        cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+        cv = ngx_pcalloc(cf->pool, sizeof(ngx_http_complex_value_t));
         if (cv == NULL) {
             ngx_log_error(NGX_LOG_ERR, cf->pool->log,
                     0, "Failed to configure http_log_json_format.");
@@ -666,6 +833,14 @@ ngx_http_log_json_read_format(ngx_conf_t *cf,
         }
 
         item->name = key_str;
+
+        if (*value_str->data == '$') {
+            item->var_name.data= ngx_pcalloc(cf->pool, value_str->len - 1);
+            ngx_memcpy(item->var_name.data,
+                    value_str->data + 1, value_str->len - 1);
+            item->var_name.len = value_str->len - 1;
+        }
+
         item->is_array = 0;
 
         /* Check and save type from name prefix */
@@ -788,6 +963,7 @@ ngx_http_log_json_loc_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     ngx_http_log_json_format_t           *new_format;
     ngx_http_log_json_loc_conf_t         *lc = conf;
     ngx_http_compile_complex_value_t     ccv;
+    ngx_str_t                            s;
 
     args = cf->args->elts;
     /* this should never happen, but we check it anyway */
@@ -816,19 +992,16 @@ ngx_http_log_json_loc_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *con
             sizeof(ngx_http_log_json_item_t)
             );
 
-   if (ngx_http_log_json_read_format(cf, new_format) != NGX_OK) {
-       ngx_conf_log_error(NGX_LOG_EMERG, cf,
-               0, "invalid format read");
-       return NGX_CONF_ERROR;
-   }
-
+    if (ngx_http_log_json_read_format(cf, new_format) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf,
+                0, "invalid format read");
+        return NGX_CONF_ERROR;
+    }
 
     /*check and save the if filter condition */
     if (cf->args->nelts >= 4 && args[3].data != NULL) {
 
         if (ngx_strncmp(args[3].data, "if=", 3) == 0) {
-
-            ngx_str_t s;
             s.len = args[3].len - 3;
             s.data = args[3].data + 3;
 
@@ -836,7 +1009,7 @@ ngx_http_log_json_loc_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *con
 
             ccv.cf = cf;
             ccv.value = &s;
-            ccv.complex_value = ngx_palloc(cf->pool,
+            ccv.complex_value = ngx_pcalloc(cf->pool,
                     sizeof(ngx_http_complex_value_t));
             if (ccv.complex_value == NULL) {
                 return NGX_CONF_ERROR;
@@ -851,7 +1024,37 @@ ngx_http_log_json_loc_format_block(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     return NGX_CONF_OK;
 }
 
-/* Register a output location destination for the HTTP location config 
+static char *
+ngx_http_log_json_loc_req_body_limit(ngx_conf_t *cf,
+        ngx_command_t *cmd, void *conf) {
+
+    ngx_http_log_json_loc_conf_t         *lc = conf;
+    ngx_str_t                            *args = cf->args->elts;
+    size_t                               sp = NGX_ERROR;
+
+    if (! args) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "Invalid argument for HTTP request body limit");
+        return NGX_CONF_ERROR;
+    }
+
+    sp = ngx_parse_size(&args[1]);
+    if (sp == (size_t) NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "Invalid argument for HTTP request body limit");
+        return NGX_CONF_ERROR;
+    }
+
+    if (sp == 0) {
+        sp = HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT;
+    }
+
+    lc->req_body_limit = sp;
+
+    return NGX_CONF_OK;
+}
+
+/* Register a output location destination for the HTTP location config
  * `http_log_json_output`
  *
  * Supported output destinations:
@@ -889,7 +1092,7 @@ ngx_http_log_json_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             break;
         }
     }
-    
+
     /* Do not accept unknown format names */
     if (!found)  {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -915,7 +1118,7 @@ ngx_http_log_json_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
                 "Invalid prefix [%v] for HTTP log JSON output location", value);
         return NGX_CONF_ERROR;
     }
-    
+
     if (!new_location) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Failed to add [%v] for HTTP log JSON output location", value);

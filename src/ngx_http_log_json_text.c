@@ -8,7 +8,7 @@
 #include <jansson.h>
 #include "ngx_http_log_json_text.h"
 #include "ngx_http_log_json_str.h"
-
+#include "ngx_http_log_json_variables.h"
 
 struct ngx_http_log_json_output_cxt_s {
     /* array to keep levels node values */
@@ -32,7 +32,7 @@ typedef struct ngx_http_log_json_value_s       ngx_http_log_json_value_t;
 static ngx_pool_t * current_pool;
 
 /* Helper functions for allocate/free from memory pool for libjsasson. */
-static void
+void
 set_current_mem_pool(ngx_pool_t *pool) {
     current_pool = pool;
 }
@@ -41,7 +41,6 @@ static ngx_pool_t *
 get_current_mem_pool() {
     return current_pool;
 }
-
 
 ngx_int_t
 ngx_http_log_json_output_cxt_new(
@@ -290,9 +289,14 @@ ngx_http_log_json_output_add_item(
         ngx_http_log_json_output_cxt_t *output_ctx,
         ngx_http_log_json_item_t *item) {
 
-    ngx_str_t value;
-    uint32_t levels = 0;
-    json_t *parent = output_ctx->root;
+    ngx_str_t                   value;
+    uint32_t                    levels = 0;
+    json_t                      *parent = output_ctx->root;
+    size_t                      v = 0;
+    ngx_http_variable_value_t   *vv;
+    ngx_uint_t                  varkey;
+    size_t                      local_vars_len;
+    ngx_http_variable_t         *local_vars = NULL;
 
     ngx_http_complex_value_t *ccv = (ngx_http_complex_value_t *) item->ccv;
     ngx_int_t err = ngx_http_complex_value(r, ccv, &value);
@@ -318,6 +322,37 @@ ngx_http_log_json_output_add_item(
     /* add value to parent location */
     const char *key = ngx_http_log_json_label_key_dup(current_pool,
             item->name, item->name->len);
+
+    local_vars = ngx_http_log_json_variables(&local_vars_len);
+
+    /* try to find local variables and add it to parent */
+    for(v = 0; v < local_vars_len; v++) {
+
+        if (item->var_name.len == 0) {
+            continue;
+        }
+
+        if (ngx_strncasecmp(
+                    local_vars[v].name.data,
+                    item->var_name.data,
+                    item->var_name.len) == 0) {
+
+            /* get var value by key */
+            varkey = ngx_hash_strlow(item->var_name.data,
+                    item->var_name.data, item->var_name.len);
+
+            vv = ngx_http_get_variable(r,
+                    &local_vars[v].name, varkey);
+
+            if (vv && vv->data) {
+                /* puts value node under parent */
+                json_object_set(parent, key, (json_t *) vv->data);
+                return NGX_OK;
+            }
+            break;
+        }
+    }
+
 
     ngx_http_log_json_add_json_node(parent,
             item->is_array, item->type,
