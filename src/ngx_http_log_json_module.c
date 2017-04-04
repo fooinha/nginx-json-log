@@ -102,16 +102,17 @@ static ngx_str_t   conf_zero_value             = ngx_string("0");
 /* data structures */
 
 struct ngx_http_log_json_format_s {
-    ngx_str_t                        name;      /* the format name */
-    ngx_str_t                        config;    /* value at config files */
-    ngx_array_t                      *items;    /* format items */
+    ngx_str_t                        name;       /* the format name */
+    ngx_str_t                        config;     /* value at config files */
+    ngx_array_t                      *items;     /* format items */
     ngx_http_complex_value_t         *filter;    /* filter output */
 };
 typedef struct ngx_http_log_json_format_s     ngx_http_log_json_format_t;
 
 struct ngx_http_log_json_loc_kafka_conf_s {
-    rd_kafka_topic_t                 *rkt;       /* kafka topic */
-    rd_kafka_topic_conf_t            *rktc;      /* kafka topic configuration */
+    rd_kafka_topic_t                 *rkt;        /* kafka topic */
+    rd_kafka_topic_conf_t            *rktc;       /* kafka topic configuration*/
+    ngx_http_complex_value_t         *msg_id_var; /* variable for message id */
 };
 
 /* configuration data structures */
@@ -447,6 +448,8 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
     ngx_http_log_json_output_location_t *arr;
     ngx_http_log_json_output_location_t *location;
 
+    ngx_str_t                           msg_id;
+
     lc = ngx_http_get_module_loc_conf(r, ngx_http_log_json_module);
 
     /*FIXME: Try to discard local upstream requests */
@@ -526,6 +529,7 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
         /* Write to kafka */
         if (location->type == NGX_HTTP_LOG_JSON_SINK_KAFKA) {
 
+
             /* don't do anything if no kafka brokers to send */
             if (! mcf->kafka.valid_brokers) {
                 continue;
@@ -547,6 +551,15 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
                 continue;
             }
 
+            if (location->kafka.msg_id_var) {
+                ngx_http_complex_value(r, location->kafka.msg_id_var, &msg_id);
+#if (NGX_DEBUG)
+                ngx_log_error(NGX_LOG_DEBUG, r->pool->log, 0,
+                        "http_log_json: kafka msg-id:[%v] msg:[%s]",
+                        &msg_id, txt);
+#endif
+            }
+
             /* FIXME : Reconnect support */
             /* Send/Produce message. */
             if ((err =  rd_kafka_produce(
@@ -556,7 +569,8 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
                             /* Payload and length */
                             txt, strlen(txt),
                             /* Optional key and its length */
-                            NULL, 0,
+                            msg_id.data ? (const char *) msg_id.data: NULL,
+                            msg_id.len,
                             /* Message opaque, provided in
                              * delivery report callback as
                              * msg_opaque. */
@@ -573,6 +587,7 @@ static ngx_int_t ngx_http_log_json_log_handler(ngx_http_request_t *r) {
             } else {
 
 #if (NGX_DEBUG)
+
                 if (mcf) {
                     ngx_log_error(NGX_LOG_DEBUG, r->pool->log, 0,
                             "http_log_json: kafka msg:[%s] ERR:[%d] QUEUE:[%d]",
@@ -1043,7 +1058,31 @@ ngx_http_log_json_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
         /* Set global variable */
         http_log_json_has_kafka_locations = NGX_OK;
+
+#if nginx_version >= 1011000
+        ngx_http_compile_complex_value_t     ccv;
+        /*FIXME: Change this to an user's configured variable */
+        ngx_str_t                  msg_id_variable = ngx_string("$request_id");
+
+        /* Set variable for message id */
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+
+        ccv.cf = cf;
+        ccv.value = &msg_id_variable;
+        ccv.complex_value = ngx_pcalloc(cf->pool,
+                sizeof(ngx_http_complex_value_t));
+        if (ccv.complex_value == NULL) {
+            return NGX_CONF_ERROR;
+        }
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+        new_location->kafka.msg_id_var = ccv.complex_value;
+#endif
     }
+
+
 
     return NGX_CONF_OK;
 }

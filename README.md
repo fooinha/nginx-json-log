@@ -62,6 +62,11 @@ The possible output locations are:
 * "file:" - The logging location will be a local filesystem file.
 * "kafka:" - The logging location will be a Kafka topic.
 
+#### Kafka Message Id
+
+If kafka output is used the value from $request_id nginx variable will be used to set kafka's message id.
+The $request_id is only available for nginx (>=1.11.0).
+
 #### Example Configuration
 
 
