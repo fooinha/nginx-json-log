@@ -62,7 +62,7 @@ RUN cd nginx-http-log-json && git checkout ${GIT_BRANCH}
 RUN apt-get source nginx
 
 # Configure , make and install
-RUN cd nginx-`apt-cache show nginx | grep "Version:"| cut -d ' ' -f2- | cut -d'-' -f1` && ./configure --with-debug --with-http_perl_module --add-module=/build/nginx-http-log-json --with-http_geoip_module && make install 
+RUN cd nginx-`apt-cache show nginx | grep "Version:"| cut -d ' ' -f2- | cut -d'-' -f1` && ./configure --with-debug --with-http_perl_module --add-module=/build/nginx-http-log-json --with-http_geoip_module && make install
 
 # Get test framework
 RUN git clone https://github.com/openresty/test-nginx.git
