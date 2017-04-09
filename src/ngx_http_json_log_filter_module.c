@@ -28,53 +28,53 @@
 #include <ngx_http.h>
 #include <ngx_log.h>
 
-#include "ngx_http_log_json_module.h"
-#include "ngx_http_log_json_variables.h"
+#include "ngx_http_json_log_module.h"
+#include "ngx_http_json_log_variables.h"
 
 #define HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT 512
 
-struct ngx_http_log_json_req_body_s {
+struct ngx_http_json_log_req_body_s {
     ngx_http_request_t                       *r;
     ngx_str_t                                 payload;
     ngx_queue_t                               queue;
 };
 
-typedef struct ngx_http_log_json_req_body_s ngx_http_log_json_req_body_t;
-typedef struct ngx_http_log_json_resp_headers_s
-    ngx_http_log_json_resp_headers_t;
+typedef struct ngx_http_json_log_req_body_s ngx_http_json_log_req_body_t;
+typedef struct ngx_http_json_log_resp_headers_s
+    ngx_http_json_log_resp_headers_t;
 
 /* main config state */
-struct ngx_http_log_json_filter_main_conf_s {
+struct ngx_http_json_log_filter_main_conf_s {
 };
 
 /* location config */
-struct ngx_http_log_json_filter_loc_conf_s {
+struct ngx_http_json_log_filter_loc_conf_s {
     size_t                req_body_limit;
 };
 
-typedef struct ngx_http_log_json_filter_main_conf_s
-    ngx_http_log_json_filter_main_conf_t;
+typedef struct ngx_http_json_log_filter_main_conf_s
+    ngx_http_json_log_filter_main_conf_t;
 
-typedef struct ngx_http_log_json_filter_loc_conf_s
-    ngx_http_log_json_filter_loc_conf_t;
-
-static void *
-ngx_http_log_json_filter_create_main_conf(ngx_conf_t *cf);
+typedef struct ngx_http_json_log_filter_loc_conf_s
+    ngx_http_json_log_filter_loc_conf_t;
 
 static void *
-ngx_http_log_json_filter_create_loc_conf(ngx_conf_t *cf);
+ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf);
+
+static void *
+ngx_http_json_log_filter_create_loc_conf(ngx_conf_t *cf);
 
 static ngx_int_t
-ngx_http_log_json_filter_init(ngx_conf_t *cf);
+ngx_http_json_log_filter_init(ngx_conf_t *cf);
 
 static char *
-ngx_http_log_json_loc_req_body_limit(ngx_conf_t *cf,
+ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf);
 
-static ngx_command_t ngx_http_log_json_filter_commands[] = {
-    { ngx_string("http_log_json_req_body_limit"),
+static ngx_command_t ngx_http_json_log_filter_commands[] = {
+    { ngx_string("http_json_log_req_body_limit"),
         NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-        ngx_http_log_json_loc_req_body_limit,
+        ngx_http_json_log_loc_req_body_limit,
         NGX_HTTP_LOC_CONF_OFFSET,
         0,
         NULL
@@ -82,21 +82,21 @@ static ngx_command_t ngx_http_log_json_filter_commands[] = {
 };
 
 /* config preparation */
-static ngx_http_module_t ngx_http_log_json_filter_module_ctx = {
+static ngx_http_module_t ngx_http_json_log_filter_module_ctx = {
     NULL,                                      /* preconfiguration */
-    ngx_http_log_json_filter_init,             /* postconfiguration */
-    ngx_http_log_json_filter_create_main_conf, /* create main configuration */
+    ngx_http_json_log_filter_init,             /* postconfiguration */
+    ngx_http_json_log_filter_create_main_conf, /* create main configuration */
     NULL,                                      /* init main configuration */
     NULL,                                      /* create server configuration */
     NULL,                                      /* merge server configuration */
-    ngx_http_log_json_filter_create_loc_conf,  /* create location configuration */
+    ngx_http_json_log_filter_create_loc_conf,  /* create location configuration */
     NULL                                       /* merge location configuration */
 };
 
-ngx_module_t ngx_http_log_json_filter_module = {
+ngx_module_t ngx_http_json_log_filter_module = {
     NGX_MODULE_V1,
-    &ngx_http_log_json_filter_module_ctx,  /* module context */
-    ngx_http_log_json_filter_commands,     /* module directives */
+    &ngx_http_json_log_filter_module_ctx,  /* module context */
+    ngx_http_json_log_filter_commands,     /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -108,11 +108,34 @@ ngx_module_t ngx_http_log_json_filter_module = {
     NGX_MODULE_V1_PADDING
 };
 
+static ngx_int_t   http_json_log_needs_req_body_filter        = NGX_CONF_UNSET;
+static ngx_int_t   http_json_log_needs_resp_headers_filter    = NGX_CONF_UNSET;
+
+ngx_int_t
+ngx_http_json_log_needs_body_filter() {
+    return http_json_log_needs_req_body_filter != NGX_CONF_UNSET;
+}
+
+void
+ngx_http_json_log_set_needs_body_filter() {
+    http_json_log_needs_req_body_filter = 1;
+}
+
+ngx_int_t
+ngx_http_json_log_needs_header_filter() {
+    return http_json_log_needs_resp_headers_filter != NGX_CONF_UNSET;
+}
+
+void
+ngx_http_json_log_set_needs_header_filter() {
+    http_json_log_needs_resp_headers_filter = 1;
+}
+
 static char *
-ngx_http_log_json_loc_req_body_limit(ngx_conf_t *cf,
+ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf) {
 
-    ngx_http_log_json_filter_loc_conf_t  *lc = conf;
+    ngx_http_json_log_filter_loc_conf_t  *lc = conf;
     ngx_str_t                            *args = cf->args->elts;
     size_t                               sp = NGX_ERROR;
 
@@ -142,10 +165,10 @@ ngx_http_log_json_loc_req_body_limit(ngx_conf_t *cf,
 
 
 static size_t
-ngx_http_log_json_get_req_body_limit(ngx_http_request_t *r) {
-    ngx_http_log_json_filter_loc_conf_t        *lc;
+ngx_http_json_log_get_req_body_limit(ngx_http_request_t *r) {
+    ngx_http_json_log_filter_loc_conf_t        *lc;
 
-    lc = ngx_http_get_module_loc_conf(r, ngx_http_log_json_filter_module);
+    lc = ngx_http_get_module_loc_conf(r, ngx_http_json_log_filter_module);
 
     if (!lc) {
         return HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT;
@@ -155,7 +178,7 @@ ngx_http_log_json_get_req_body_limit(ngx_http_request_t *r) {
 
 static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 static ngx_int_t
-ngx_http_log_json_header_filter(ngx_http_request_t *r) {
+ngx_http_json_log_header_filter(ngx_http_request_t *r) {
 
     ngx_uint_t                          i;
     ngx_list_part_t                     *part = &r->headers_out.headers.part;
@@ -166,9 +189,9 @@ ngx_http_log_json_header_filter(ngx_http_request_t *r) {
     ngx_str_t                           lcname;
     ngx_http_variable_value_t           *vv;
     ngx_uint_t                          varkey;
-    ngx_str_t                   name = ngx_string("http_log_json_resp_headers");
+    ngx_str_t                   name = ngx_string("http_json_log_resp_headers");
 
-    if (!ngx_http_log_json_needs_header_filter()) {
+    if (!ngx_http_json_log_needs_header_filter()) {
         return ngx_http_next_header_filter(r);
     }
 
@@ -220,7 +243,7 @@ ngx_http_log_json_header_filter(ngx_http_request_t *r) {
         return ngx_http_next_header_filter(r);
     }
 
-    ngx_http_log_json_set_variable_resp_headers(r, vv, (uintptr_t) headers);
+    ngx_http_json_log_set_variable_resp_headers(r, vv, (uintptr_t) headers);
 
     return ngx_http_next_header_filter(r);
 }
@@ -229,13 +252,13 @@ static ngx_http_request_body_filter_pt  ngx_http_next_request_body_filter;
 
 /* save body filter */
 static ngx_int_t
-ngx_http_log_json_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
+ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
 
 
     ngx_str_t                  lcname;
     ngx_http_variable_value_t  *vv;
     ngx_uint_t                 varkey;
-    ngx_str_t                  name = ngx_string("http_log_json_req_body");
+    ngx_str_t                  name = ngx_string("http_json_log_req_body");
 
     ngx_chain_t                *cl;
     size_t                     len = 0;
@@ -244,10 +267,10 @@ ngx_http_log_json_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
     ngx_str_t                  payload;
     size_t                     limit = HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT;
 
-    if (!ngx_http_log_json_needs_body_filter()) {
+    if (!ngx_http_json_log_needs_body_filter()) {
         return ngx_http_next_request_body_filter(r, in);
     }
-    limit = ngx_http_log_json_get_req_body_limit(r);
+    limit = ngx_http_json_log_get_req_body_limit(r);
     payload.len = 0;
     /* Finds out the len below limit bytes to save */
     for (cl = in; cl; cl = cl->next) {
@@ -307,31 +330,31 @@ ngx_http_log_json_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
         return ngx_http_next_header_filter(r);
     }
 
-    ngx_http_log_json_set_variable_req_body(r, vv, (uintptr_t) &payload);
+    ngx_http_json_log_set_variable_req_body(r, vv, (uintptr_t) &payload);
     return ngx_http_next_request_body_filter(r, in);
 }
 
 static ngx_int_t
-ngx_http_log_json_filter_init(ngx_conf_t *cf) {
+ngx_http_json_log_filter_init(ngx_conf_t *cf) {
 
-    if (ngx_http_log_json_needs_body_filter()) {
+    if (ngx_http_json_log_needs_body_filter()) {
         ngx_http_next_request_body_filter = ngx_http_top_request_body_filter;
-        ngx_http_top_request_body_filter = ngx_http_log_json_body_filter;
+        ngx_http_top_request_body_filter = ngx_http_json_log_body_filter;
     }
 
-    if (ngx_http_log_json_needs_header_filter()) {
+    if (ngx_http_json_log_needs_header_filter()) {
         ngx_http_next_header_filter = ngx_http_top_header_filter;
-        ngx_http_top_header_filter = ngx_http_log_json_header_filter;
+        ngx_http_top_header_filter = ngx_http_json_log_header_filter;
     }
     return NGX_OK;
 }
 
 static void *
-ngx_http_log_json_filter_create_main_conf(ngx_conf_t *cf) {
+ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf) {
 
-    ngx_http_log_json_filter_main_conf_t  *conf;
+    ngx_http_json_log_filter_main_conf_t  *conf;
 
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_log_json_filter_main_conf_t));
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_filter_main_conf_t));
     if (conf == NULL) {
         return NULL;
     }
@@ -340,11 +363,11 @@ ngx_http_log_json_filter_create_main_conf(ngx_conf_t *cf) {
 }
 
 static void *
-ngx_http_log_json_filter_create_loc_conf(ngx_conf_t *cf) {
+ngx_http_json_log_filter_create_loc_conf(ngx_conf_t *cf) {
 
-    ngx_http_log_json_filter_loc_conf_t  *conf;
+    ngx_http_json_log_filter_loc_conf_t  *conf;
 
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_log_json_filter_loc_conf_t));
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_filter_loc_conf_t));
     if (conf == NULL) {
         return NULL;
     }

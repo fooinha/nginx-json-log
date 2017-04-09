@@ -33,7 +33,7 @@ script:
   - cd test-nginx/ && sudo cpanm . && cd ..
   - sudo cpanm install JSON
   - cd nginx
-  - auto/configure --with-debug --prefix=$NGINX_PREFIX --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
+  - auto/configure --with-debug --with-stream --with-ld-opt="-Wl,-E" --prefix=$NGINX_PREFIX --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
   - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
   - sudo make install > build.log 2>&1 || (cat build.log && exit 1)
   - cd ..

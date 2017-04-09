@@ -23,36 +23,28 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_HTTP_LOG_JSON_TEXT_H__
-#define __NGX_HTTP_LOG_JSON_TEXT_H__
+#ifndef __NGX_JSON_LOG_STR_H__
+#define __NGX_JSON_LOG_STR_H__
 
-struct ngx_http_log_json_item_s {
-    const char                           *type;
-    ngx_str_t                            *name;
-    ngx_str_t                            var_name;
-    ngx_int_t                            is_array;
-    ngx_http_compile_complex_value_t     *ccv;
-};
+#include <ngx_core.h>
 
-typedef struct ngx_http_log_json_item_s  ngx_http_log_json_item_t;
+const char *
+ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len);
 
-const char * ngx_http_log_json_type_string();
-const char * ngx_http_log_json_type_integer();
-const char * ngx_http_log_json_type_real();
-const char * ngx_http_log_json_type_true();
-const char * ngx_http_log_json_type_false();
-const char * ngx_http_log_json_type_null();
+u_char *
+ngx_json_log_str_dup(ngx_pool_t *pool, ngx_str_t *src);
 
-/* Global alloc funcs registration */
-void
-ngx_http_log_json_set_alloc_funcs();
+ngx_str_t *
+ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
+        ngx_str_t *src, size_t len);
 
-void
-set_current_mem_pool(ngx_pool_t *pool);
+u_char *
+ngx_json_log_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len);
 
-/* Dumps to text format the JSON for the items for this request. */
-char *
-ngx_http_log_json_items_dump_text(ngx_http_request_t *r, ngx_array_t *items);
+ngx_int_t
+ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst);
 
-#endif // __NGX_HTTP_LOG_JSON_TEXT_H__
+ngx_uint_t
+ngx_json_log_str_split_count(ngx_str_t *value, u_char separator);
 
+#endif //__NGX_JSON_LOG_STR_H__
