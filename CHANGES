@@ -1,3 +1,7 @@
+Changes with ngx-json-log 0.0.4                                      9 Apr 2017
+    *) stream module log handler
+    *) rename to nxg-json-log
+
 Changes with ngx-http-log-json 0.0.4                                 4 Apr 2017
     *) module variable $http_log_json_req_headers
     *) module variable $http_log_json_resp_headers

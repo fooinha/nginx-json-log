@@ -50,20 +50,20 @@ services:
         cap_add:
           - ALL
 
-    nginx-dev:
-        build: ./debian-nginx-http-log-json
-        hostname: nginx-dev
-        container_name: nginx-json-dev
-        depends_on:
-          - kafka
-        links:
-          - kafka:kafka
-        ports:
-          - "81:81"
-        expose:
-          - 81
-        network_mode: bridge
-        tty: true
-        privileged: true
-        cap_add:
-          - ALL
+#    nginx-dev:
+#        build: ./debian-nginx-http-log-json
+#        hostname: nginx-dev
+#        container_name: nginx-json-dev
+#        depends_on:
+#          - kafka
+#        links:
+#          - kafka:kafka
+#        ports:
+#          - "81:81"
+#        expose:
+#          - 81
+#        network_mode: bridge
+#        tty: true
+#        privileged: true
+#        cap_add:
+#          - ALL

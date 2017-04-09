@@ -23,32 +23,32 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_HTTP_LOG_JSON_VARIABLES_H__
-#define __NGX_HTTP_LOG_JSON_VARIABLES_H__
+#ifndef __NGX_HTTP_JSON_LOG_VARIABLES_H__
+#define __NGX_HTTP_JSON_LOG_VARIABLES_H__
 
 #include <ngx_config.h>
 #include <ngx_http_variables.h>
 
 void
-ngx_http_log_json_register_variables(ngx_conf_t *cf);
+ngx_http_json_log_register_variables(ngx_conf_t *cf);
 
 void
-ngx_http_log_json_set_variable_resp_headers(ngx_http_request_t *r,
+ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
             ngx_http_variable_value_t *v, uintptr_t data);
 
 void
-ngx_http_log_json_set_variable_req_body(ngx_http_request_t *r,
+ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
             ngx_http_variable_value_t *v, uintptr_t data);
 
 ngx_int_t
-ngx_http_log_json_is_local_variable(ngx_str_t *name);
+ngx_http_json_log_is_local_variable(ngx_str_t *name);
 
 ngx_int_t
-ngx_http_log_json_local_variable_needs_body_filter(ngx_str_t *name);
+ngx_http_json_log_local_variable_needs_body_filter(ngx_str_t *name);
 
 ngx_int_t
-ngx_http_log_json_local_variable_needs_header_filter(ngx_str_t *name);
+ngx_http_json_log_local_variable_needs_header_filter(ngx_str_t *name);
 
 
-#endif // __NGX_HTTP_LOG_JSON_VARIABLES_H__
+#endif // __NGX_HTTP_JSON_LOG_VARIABLES_H__
 
