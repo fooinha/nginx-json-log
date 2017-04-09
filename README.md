@@ -18,9 +18,12 @@ It supports logging to text file or to a kafka topic.
 
 It supports multiple output destinations with multiple formats for a location.
 
-### Current version
+### Current version and limitations
 
 Current version released is 0.0.5.
+
+Stream proxy logging is only available when using nginx (>= 1.11.2).
+
 
 ## Use cases
 
@@ -42,6 +45,7 @@ Each logging configuration is based on a json_log_format. (🍲)
 A json_log_format is a ';' separated list of items to include in the logging preparation.
 
 The left hand side part of item will be the JSON Path for the variable name
+
 The left hand side part can be prefixed with 's:', 'i:', 'r:', 'b:' or 'n:', so, the JSON encoding type can be controlled.
 
 * 's:' - JSON string ( default )
@@ -59,6 +63,7 @@ The right hand side will be the variable's name or literal value.
 For this, known or previously setted variables, can be used by using the '$' before name.
 
 Common HTTP nginx builtin variables like $uri, or any other variable set by other handler modules can be used.
+
 Common STREAM nginx builtin variables like $remote_addr, or any other variable set by other handler modules can be used.
 
 Additional variables are provided by this module. See the available variables below at [Variables section](#variables).
@@ -72,6 +77,7 @@ The possible output locations are:
 #### Kafka Message Id
 
 For HTTP logging, if kafka output is used the value from $request_id nginx variable will be used to set kafka's message id.
+
 The $request_id is only available for nginx (>=1.11.0).
 
 #### Example Configuration

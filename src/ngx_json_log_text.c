@@ -42,7 +42,9 @@ struct ngx_json_log_item_s {
     ngx_str_t                            var_name;
     ngx_int_t                            is_array;
     ngx_http_compile_complex_value_t     *http_ccv;
+#if nginx_version >= 1011002
     ngx_stream_compile_complex_value_t   *stream_ccv;
+#endif
 };
 typedef struct ngx_json_log_item_s  ngx_json_log_item_t;
 
@@ -345,7 +347,11 @@ ngx_json_log_output_add_item(
     const char                  *key  = NULL;
 
     ngx_http_complex_value_t    *http_ccv = NULL;
+
+#if nginx_version >= 1011002
     ngx_stream_complex_value_t  *stream_ccv = NULL;
+#endif
+
     ngx_int_t                   err = 0;
     ngx_http_request_t          *r = NULL;
     ngx_stream_session_t        *s = NULL;
@@ -354,10 +360,12 @@ ngx_json_log_output_add_item(
         http_ccv = (ngx_http_complex_value_t *) item->http_ccv;
         r = (ngx_http_request_t *) rs;
         err = ngx_http_complex_value(r, http_ccv, &value);
+#if nginx_version >= 1011002
     } else if (type == NGX_JSON_LOG_STREAM) {
         s = (ngx_stream_session_t *) rs;
         stream_ccv = (ngx_stream_complex_value_t *) item->stream_ccv;
         err = ngx_stream_complex_value(s, stream_ccv, &value);
+#endif
     } else {
         ngx_log_error(NGX_LOG_ERR, current_pool->log, 0,
                 "Invalid module type");
@@ -502,8 +510,12 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
     ngx_json_log_item_t                 *item;
     ngx_http_complex_value_t            *http_cv = NULL;
     ngx_http_compile_complex_value_t    http_ccv;
+
+#if nginx_version >= 1011002
     ngx_stream_complex_value_t          *stream_cv = NULL;
     ngx_stream_compile_complex_value_t  stream_ccv;
+#endif
+
     int                                 array_prefix_len = 0;
 
     int                                 i;
@@ -596,6 +608,7 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
             item->http_ccv = (ngx_http_compile_complex_value_t *) http_cv;
         }
 
+#if nginx_version >= 1011002
         if (type == NGX_JSON_LOG_STREAM) {
             stream_cv = ngx_pcalloc(cf->pool, sizeof(ngx_stream_complex_value_t));
             if (stream_cv == NULL) {
@@ -614,6 +627,7 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
             }
             item->stream_ccv = (ngx_stream_compile_complex_value_t *) stream_cv;
         }
+#endif
 
         item->name = key_str;
 
@@ -782,6 +796,7 @@ ngx_http_json_log_loc_format_block(ngx_conf_t *cf,
     return NGX_CONF_OK;
 }
 
+#if nginx_version >= 1011002
 char *
 ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf) {
@@ -856,3 +871,4 @@ ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,
     }
     return NGX_CONF_OK;
 }
+#endif

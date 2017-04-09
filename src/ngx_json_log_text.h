@@ -29,7 +29,10 @@
 #include <ngx_http.h>
 #include <ngx_http_variables.h>
 #include <ngx_stream.h>
+
+#if nginx_version >= 1011002
 #include <ngx_stream_variables.h>
+#endif
 
 typedef enum {
     NGX_JSON_LOG_HTTP = 0,
@@ -41,7 +44,9 @@ struct ngx_json_log_format_s {
     ngx_str_t                   config;         /* value at config files */
     ngx_array_t                 *items;         /* format items */
     ngx_http_complex_value_t    *http_filter;   /* filter output */
+#if nginx_version >= 1011002
     ngx_stream_complex_value_t  *stream_filter; /* filter output */
+#endif
 };
 typedef struct ngx_json_log_format_s     ngx_json_log_format_t;
 
@@ -49,9 +54,11 @@ char *
 ngx_http_json_log_loc_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf);
 
+#if nginx_version >= 1011002
 char *
 ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf);
+#endif
 
 
 const char * ngx_json_log_type_string();

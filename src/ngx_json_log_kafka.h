@@ -35,7 +35,9 @@ struct ngx_json_log_kafka_conf_s {
     rd_kafka_topic_t           *rkt;              /* kafka topic */
     rd_kafka_topic_conf_t      *rktc;             /* kafka topic configuration*/
     ngx_http_complex_value_t   *http_msg_id_var;  /* variable for message id */
+#if nginx_version >= 1011002
     ngx_stream_complex_value_t *stream_msg_id_var;/* variable for message id */
+#endif
 };
 typedef struct ngx_json_log_kafka_conf_s ngx_json_log_kafka_conf_t;
 

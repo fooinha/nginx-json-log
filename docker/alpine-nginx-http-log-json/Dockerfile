@@ -31,6 +31,7 @@ RUN apk add --no-cache gcc
 RUN apk add --no-cache alpine-sdk
 RUN apk add --no-cache pcre-dev
 RUN apk add --no-cache zlib-dev
+RUN apk add --no-cache perl-dev
 
 RUN auto/configure --with-cc=/usr/bin/gcc --add-module=/build/nginx-json-log --with-debug --with-mail --with-stream --with-ld-opt="-Wl,-E"
 RUN make install

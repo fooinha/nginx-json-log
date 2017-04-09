@@ -23,6 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
@@ -185,7 +186,6 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
     ngx_json_log_output_location_t     *location;
 
     int                                 err;
-    ngx_str_t                           msg_id;
 
     lc = ngx_stream_get_module_srv_conf(s, ngx_stream_json_log_module);
 
@@ -280,16 +280,6 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
                 continue;
             }
 
-            if (location->kafka.http_msg_id_var) {
-                ngx_stream_complex_value(s,
-                        location->kafka.stream_msg_id_var, &msg_id);
-#if (NGX_DEBUG)
-                ngx_log_error(NGX_LOG_DEBUG, s->connection->pool->log, 0,
-                        "http_json_log: kafka msg-id:[%v] msg:[%s]",
-                        &msg_id, txt);
-#endif
-            }
-
             /* FIXME : Reconnect support */
             /* Send/Produce message. */
             if ((err =  rd_kafka_produce(
@@ -299,8 +289,7 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
                             /* Payload and length */
                             txt, strlen(txt),
                             /* Optional key and its length */
-                            msg_id.data ? (const char *) msg_id.data: NULL,
-                            msg_id.len,
+                            NULL, 0,
                             /* Message opaque, provided in
                              * delivery report callback as
                              * msg_opaque. */
@@ -533,3 +522,4 @@ ngx_stream_json_log_init_worker(ngx_cycle_t *cycle) {
 
     return NGX_OK;
 }
+

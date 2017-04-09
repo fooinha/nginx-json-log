@@ -25,6 +25,7 @@
  */
 #ifndef __NGX_STREAM_JSON_LOG_MODULE_H__
 #define __NGX_STREAM_JSON_LOG_MODULE_H__
+#if nginx_version >= 1011002
 
 #include <ngx_core.h>
 
@@ -34,6 +35,8 @@ struct ngx_stream_json_log_srv_conf_s {
 };
 
 typedef struct ngx_stream_json_log_srv_conf_s   ngx_stream_json_log_srv_conf_t;
+
+#endif
 
 #endif // __NGX_STREAM_JSON_LOG_MODULE_H__
 
