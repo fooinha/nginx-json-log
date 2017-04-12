@@ -796,6 +796,83 @@ ngx_http_json_log_loc_format_block(ngx_conf_t *cf,
     return NGX_CONF_OK;
 }
 
+char *
+ngx_http_json_log_srv_format_block(ngx_conf_t *cf,
+        ngx_command_t *cmd, void *conf) {
+
+    ngx_str_t                            *args;
+    ngx_json_log_format_t                *new_format;
+    ngx_http_json_log_srv_conf_t         *lc = conf;
+    ngx_http_compile_complex_value_t     ccv;
+    ngx_str_t                            s;
+    ngx_uint_t                           items_len;
+
+    args = cf->args->elts;
+    /* this should never happen, but we check it anyway */
+    if (! args) {
+        ngx_conf_log_error(NGX_LOG_EMERG,
+                cf, 0, "invalid empty format");
+        return NGX_CONF_ERROR;
+    }
+
+    items_len = ngx_json_log_str_split_count(&args[2], ';');
+    if (! items_len) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "Failed to create empty json log format.");
+        return NGX_CONF_ERROR;
+    }
+
+    /*TODO*: to verify if format name is duplicated */
+    new_format = ngx_array_push(lc->formats);
+
+    if (!new_format) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "Failed to create json log format.");
+        return NGX_CONF_ERROR;
+    }
+
+    /* Saves the format name and the format spec value */
+    new_format->name   = args[1];
+    new_format->config = args[2];
+
+    /* Create an array with the number of items found */
+    new_format->items = ngx_array_create(cf->pool,
+            items_len,
+            sizeof(ngx_json_log_item_t)
+            );
+
+    if (ngx_json_log_read_format(cf, NGX_JSON_LOG_HTTP, new_format) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf,
+                0, "invalid format read");
+        return NGX_CONF_ERROR;
+    }
+
+    /*check and save the if filter condition */
+    if (cf->args->nelts >= 4 && args[3].data != NULL) {
+
+        if (ngx_strncmp(args[3].data, "if=", 3) == 0) {
+            s.len = args[3].len - 3;
+            s.data = args[3].data + 3;
+
+            ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+            ccv.cf = cf;
+            ccv.value = &s;
+            ccv.complex_value = ngx_pcalloc(cf->pool,
+                    sizeof(ngx_http_complex_value_t));
+            if (ccv.complex_value == NULL) {
+                return NGX_CONF_ERROR;
+            }
+            if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                return NGX_CONF_ERROR;
+            }
+            new_format->http_filter = ccv.complex_value;
+        }
+    }
+    return NGX_CONF_OK;
+}
+
+
 #if nginx_version >= 1011002
 char *
 ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,

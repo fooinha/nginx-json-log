@@ -30,12 +30,20 @@
 
 #include <ngx_core.h>
 
+
 struct ngx_http_json_log_loc_conf_s {
     ngx_array_t                               *locations;
     ngx_array_t                               *formats;
 };
 
 typedef struct ngx_http_json_log_loc_conf_s   ngx_http_json_log_loc_conf_t;
+
+struct ngx_http_json_log_srv_conf_s {
+    ngx_array_t                               *locations;
+    ngx_array_t                               *formats;
+};
+
+typedef struct ngx_http_json_log_srv_conf_s     ngx_http_json_log_srv_conf_t;
 
 ngx_int_t
 ngx_http_json_log_needs_body_filter();

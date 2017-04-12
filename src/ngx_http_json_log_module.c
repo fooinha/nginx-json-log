@@ -187,6 +187,7 @@ ngx_module_t ngx_http_json_log_module = {
 static ngx_int_t
 ngx_http_json_log_init_worker(ngx_cycle_t *cycle) {
 
+    ngx_int_t rc = NGX_OK;
     ngx_http_json_log_main_conf_t  *conf =
         ngx_http_cycle_get_module_main_conf(cycle, ngx_http_json_log_module);
 
@@ -195,7 +196,10 @@ ngx_http_json_log_init_worker(ngx_cycle_t *cycle) {
         return NGX_OK;
     }
 
-    ngx_json_log_configure_kafka(cycle->pool, &conf->kafka);
+    rc = ngx_json_log_configure_kafka(cycle->pool, &conf->kafka);
+    if (rc != NGX_OK) {
+        return NGX_OK; //FIXME: What to do?
+    }
 
     return NGX_OK;
 }
@@ -447,7 +451,7 @@ ngx_http_json_log_create_main_conf(ngx_conf_t *cf) {
 }
 
 /* Register a output location destination for the HTTP location config
- * `http_json_log_output`
+ * `json_log`
  *
  * Supported output destinations:
  *
