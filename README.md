@@ -444,6 +444,81 @@ Example:
         }
 ```
 
+### Logging mail proxies authentication
+
+If nginx is used for mail proxy and **auth_http** is set, then, it's possible to log the HTTP requests for authentication service.
+
+An example with full configuration.
+
+#### The mail proxy
+
+```
+mail {
+    server_name mail.local;
+    auth_http   localhost:9876/;
+
+    server {
+        listen    25;
+        protocol  smtp;
+        smtp_auth none;
+    }
+}
+```
+
+#### The HTTP auth service
+
+```
+http {
+    server {
+        listen 9876;
+
+        location / {
+            add_header Auth-Status OK;
+            add_header Auth-Server 127.0.0.1;
+            add_header Auth-Port 2525;
+
+            root   html;
+            index  index.html index.htm;
+
+            json_log_format mail_log '
+               _date                  $time_iso8601;
+               headers                $http_json_log_req_headers;
+            ';
+
+            json_log file:/tmp/mail.log mail_log;
+        }
+
+        error_page 405 =200 $uri ;
+        error_page 404 =200 /index.html ;
+    }
+}
+```
+
+#### The output log JSON line. ( pretty printed ...)
+
+```
+{
+  "_date": "2017-04-12T23:58:07+00:00",
+  "headers": {
+    "Host": "localhost",
+    "Auth-Method": "none",
+    "Auth-User": "",
+    "Auth-Pass": "",
+    "Auth-Protocol": "smtp",
+    "Auth-Login-Attempt": "1",
+    "Client-IP": "127.0.0.1",
+    "Client-Host": "[UNAVAILABLE]",
+    "Auth-SMTP-Helo": "atacker.cloud",
+    "Auth-SMTP-From": "mail from: <bob>",
+    "Auth-SMTP-To": "rcpt to: <alice>"
+  }
+}
+```
+
+**Attention**: The Auth-Pass is not masked in any way, nor removed, so the client's value will be logged.
+
+
+
 ### Build
 
 #### Dependencies
@@ -662,3 +737,5 @@ nginx-json-zookeeper   /bin/sh -c /usr/sbin/sshd  ...   Up      0.0.0.0:2181->21
 An additional docker service for development it's available.
 
 Just uncomment the nginx-json-dev service block.
+
+
