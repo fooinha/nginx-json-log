@@ -124,6 +124,7 @@ size_t ngx_json_log_kafka_add_brokers(ngx_pool_t *pool, rd_kafka_t *rk, ngx_arra
 
     rec = brokers->elts;
     for (size_t i = 0; i < brokers->nelts; ++i) {
+
         broker = &rec[i];
         value = ngx_json_log_str_dup(pool, broker);
 
@@ -136,6 +137,9 @@ size_t ngx_json_log_kafka_add_brokers(ngx_pool_t *pool, rd_kafka_t *rk, ngx_arra
                     "json_log: failed to configure \"%V\"", broker);
         }
     }
+
+
+
     return ret;
 }
 
@@ -258,6 +262,7 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
     conf->rk = ngx_json_log_kafka_producer_new(
             pool,
             conf->rkc);
+
     if (! conf->rk) {
         return NGX_ERROR;
     }

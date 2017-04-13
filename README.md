@@ -80,6 +80,17 @@ For HTTP logging, if kafka output is used the value from $request_id nginx varia
 
 The $request_id is only available for nginx (>=1.11.0).
 
+
+#### Log HTTP Bad Requests
+
+Nginx will short circuit response if the client sends a Bad Request. In that case, the log handler will not be run.
+
+In order to, capture and log these requests we can define at server level, a format and output location for this requests.
+
+The directives json_err_log_* (same suffixes as the directives for location logging), should be used for this case.
+
+Additionally, the variable $http_json_err_log_req will be set with a base64 encodede string for the data sent from the client, until the limit set by **http_json_log_req_body_limit** is reached.
+
 #### Example Configuration
 
 
@@ -218,13 +229,20 @@ To ease reading, it's shown here formatted with newlines.
  ```
 
 
+
 ### Directives
 
----
+
 * Syntax: **json_log_format** _format_name_ { _format_ } _if_=...;
 * Default: —
 * Context: http location
 * Context: stream server
+
+---
+
+* Syntax: **json_err_log_format** _format_name_ { _format_ } _if_=...;
+* Default: —
+* Context: http server
 
 ###### _format_name_ ######
 
@@ -240,10 +258,16 @@ Works the same way as _if_ argument from http [access_log](http://nginx.org/en/d
 
 ---
 
-* Syntax: **json_log** _location_ _format_name_ 
+* Syntax: **json_log** _location_ _format_name_
 * Default: —
 * Context: http location
 * Context: stream server
+
+----
+
+* Syntax: **json_err_log** _location_ _format_name_
+* Default: —
+* Context: http server
 
 ###### _location_ ######
 
@@ -268,12 +292,24 @@ The format to use when writing to output destination.
 * Context: http main
 * Context: stream main
 
+----
+
+* Syntax: **json_err_log_kafka_brokers** list of brokers separated by spaces;
+* Default: —
+* Context: http main
+
 ---
 
 * Syntax: **json_log_kafka_client_id** _id_;
 * Default: nginx
 * Context: http main
 * Context: stream main
+
+----
+
+* Syntax: **json_err_log_kafka_client_id** _id_;
+* Default: nginx
+* Context: http server
 
 ---
 
@@ -282,12 +318,24 @@ The format to use when writing to output destination.
 * Context: http main
 * Context: stream main
 
+----
+
+* Syntax: **json_err_log_kafka_compression** _compression_codec_;
+* Default: snappy
+* Context: http server
+
 ---
 
 * Syntax: **json_log_kafka_log_level** _numeric_log_level_;
 * Default: 6
 * Context: http main
 * Context: stream main
+
+----
+
+* Syntax: **json_err_log_kafka_log_level** _numeric_log_level_;
+* Default: 6
+* Context: http server
 
 ---
 
@@ -296,12 +344,24 @@ The format to use when writing to output destination.
 * Context: http main
 * Context: stream main
 
+----
+
+* Syntax: **json_err_log_kafka_max_retries** _numeric_;
+* Default: 0
+* Context: http main
+
 ---
 
 * Syntax: **json_log_kafka_buffer_max_messages** _numeric_;
 * Default: 100000
 * Context: http main
 * Context: stream main
+
+----
+
+* Syntax: **json_err_log_kafka_buffer_max_messages** _numeric_;
+* Default: 100000
+* Context: http main
 
 ---
 
@@ -310,12 +370,24 @@ The format to use when writing to output destination.
 * Context: http main
 * Context: stream main
 
+----
+
+* Syntax: **json_err_log_kafka_backoff_ms** _numeric_;
+* Default: 10
+* Context: http main
+
 ---
 
 * Syntax: **json_log_kafka_partition** _partition_;
 * Default: RD_KAFKA_PARTITION_UA
 * Context: http main
 * Context: stream main
+
+----
+
+* Syntax: **json_err_log_kafka_partition** _partition_;
+* Default: RD_KAFKA_PARTITION_UA
+* Context: http main
 
 ---
 
@@ -587,6 +659,6 @@ nginx-json-zookeeper   /bin/sh -c /usr/sbin/sshd  ...   Up      0.0.0.0:2181->21
 
 ```
 
-An additional docker service for development only it's available.
+An additional docker service for development it's available.
 
 Just uncomment the nginx-json-dev service block.

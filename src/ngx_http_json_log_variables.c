@@ -65,6 +65,11 @@ static ngx_http_variable_t  ngx_http_json_log_variables_list[] = {
             ngx_http_json_log_set_variable_req_body,
             NULL,
             0, 0, 0
+        },
+        {   ngx_string("http_json_err_log_req"),
+            ngx_http_json_log_set_variable_req_body,
+            NULL,
+            0, 0, 0
         }
 };
 
