@@ -877,19 +877,10 @@ ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf) {
     }
 
 #ifdef HTTP_JSON_LOG_KAFKA_ENABLED
-    /* kafka */
-    conf->kafka.rk                  = NULL;
-    conf->kafka.rkc                 = NULL;
-
-    /* default values */
-    conf->kafka.brokers             = ngx_array_create(cf->pool,
-            1 , sizeof(ngx_str_t));
-    conf->kafka.client_id.data      = NULL;
-    conf->kafka.compression.data    = NULL;
-    conf->kafka.log_level           = NGX_CONF_UNSET_UINT;
-    conf->kafka.max_retries         = NGX_CONF_UNSET_UINT;
-    conf->kafka.buffer_max_messages = NGX_CONF_UNSET_UINT;
-    conf->kafka.backoff_ms          = NGX_CONF_UNSET_UINT;
+    if (ngx_json_log_init_kafka(cf->pool, &conf->kafka) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "http_json_log: error initialize kafka conf");
+    }
 #endif
 
     return conf;
