@@ -36,15 +36,19 @@
                  "file:",                                   \
                  NGX_JSON_LOG_FILE_OUT_LEN) ==  0 )
 
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
 #define NGX_JSON_LOG_KAFKA_OUT_LEN (sizeof("kafka:") - 1)
 #define NGX_JSON_LOG_HAS_KAFKA_PREFIX(str)                  \
     (ngx_strncmp(str->data,                                 \
                  "kafka:",                                  \
                  NGX_JSON_LOG_KAFKA_OUT_LEN) ==  0 )
+#endif
 
 typedef enum {
     NGX_JSON_LOG_SINK_FILE = 0,
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
     NGX_JSON_LOG_SINK_KAFKA = 1
+#endif
 } ngx_json_log_sink_e;
 
 struct ngx_json_log_output_location_s {
@@ -52,7 +56,9 @@ struct ngx_json_log_output_location_s {
     ngx_json_log_sink_e                       type;
     ngx_json_log_format_t                     format;
     ngx_open_file_t                           *file;
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
     ngx_json_log_kafka_conf_t                 kafka;
+#endif
 };
 
 typedef struct ngx_json_log_output_location_s ngx_json_log_output_location_t;

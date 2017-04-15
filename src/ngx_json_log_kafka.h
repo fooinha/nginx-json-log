@@ -25,6 +25,7 @@
  */
 #ifndef __NGX_JSON_LOG_KAFKA_H__
 #define __NGX_JSON_LOG_KAFKA_H__
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
 
 #include <ngx_core.h>
 #include <ngx_http.h>
@@ -73,4 +74,6 @@ ngx_json_log_kafka_topic_conf_set_str(ngx_pool_t *pool,
 ngx_int_t
 ngx_json_log_configure_kafka(ngx_pool_t *pool,
         ngx_json_log_main_kafka_conf_t *conf);
+
+#endif// HTTP_JSON_LOG_KAFKA_ENABLED
 #endif// __NGX_LOG_JSON_KAFKA_H__

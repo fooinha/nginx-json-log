@@ -23,6 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
 #include <ngx_json_log_kafka.h>
 #include <ngx_json_log_str.h>
 
@@ -286,3 +287,4 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
 
     return NGX_OK;
 }
+#endif// HTTP_JSON_LOG_KAFKA_ENABLED
