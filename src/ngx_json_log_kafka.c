@@ -166,6 +166,33 @@ rd_kafka_topic_t * ngx_json_log_kafka_topic_new(ngx_pool_t *pool, rd_kafka_t *rk
 }
 
 ngx_int_t
+ngx_json_log_init_kafka(ngx_pool_t *pool,
+        ngx_json_log_main_kafka_conf_t *kafka) {
+
+    if (! kafka) {
+        return NGX_ERROR;
+    }
+
+    kafka->rk                  = NULL;
+    kafka->rkc                 = NULL;
+
+    kafka->brokers             = ngx_array_create(pool, 1, sizeof(ngx_str_t));
+
+    if (! kafka->brokers) {
+        return NGX_ERROR;
+    }
+
+    kafka->client_id.data      = NULL;
+    kafka->compression.data    = NULL;
+    kafka->log_level           = NGX_CONF_UNSET_UINT;
+    kafka->max_retries         = NGX_CONF_UNSET_UINT;
+    kafka->buffer_max_messages = NGX_CONF_UNSET_UINT;
+    kafka->backoff_ms          = NGX_CONF_UNSET_UINT;
+
+    return NGX_OK;
+}
+
+ngx_int_t
 ngx_json_log_configure_kafka(ngx_pool_t *pool,
         ngx_json_log_main_kafka_conf_t *conf) {
 

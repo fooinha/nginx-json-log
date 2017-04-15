@@ -75,5 +75,9 @@ ngx_int_t
 ngx_json_log_configure_kafka(ngx_pool_t *pool,
         ngx_json_log_main_kafka_conf_t *conf);
 
+ngx_int_t
+ngx_json_log_init_kafka(ngx_pool_t *pool,
+        ngx_json_log_main_kafka_conf_t *kafka);
+
 #endif// HTTP_JSON_LOG_KAFKA_ENABLED
 #endif// __NGX_LOG_JSON_KAFKA_H__
