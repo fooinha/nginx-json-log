@@ -458,11 +458,17 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
 
     set_current_mem_pool(NULL);
 
-    if (!dump) {
+    if (! dump) {
         return NULL;
     }
 
     dump_len = strlen(dump);
+    /* Empty text  */
+    if (! dump_len) {
+        return NULL;
+    }
+
+
     if (type == NGX_JSON_LOG_HTTP) {
         txt = ngx_pcalloc(r->pool, dump_len + 2);
     }

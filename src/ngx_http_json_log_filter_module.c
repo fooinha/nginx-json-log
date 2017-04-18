@@ -43,9 +43,7 @@ typedef struct ngx_http_json_log_main_conf_s     ngx_http_json_log_main_conf_t;
 
 #ifdef HTTP_JSON_LOG_KAFKA_ENABLED
 /* configuration kafka constants */
-static ngx_int_t   http_json_log_filter_has_kafka_locations     = NGX_CONF_UNSET;
-static const char *conf_req_required_acks_key  = "request.required.acks";
-static ngx_str_t   conf_zero_value             = ngx_string("0");
+static ngx_int_t   http_json_log_filter_has_kafka_locations   = NGX_CONF_UNSET;
 #endif
 
 struct ngx_http_json_log_req_body_s {
@@ -404,14 +402,8 @@ ngx_http_json_log_header_bad_request(ngx_http_request_t *r) {
                 continue;
             }
 
-            len = strlen(txt);
-            if (!len) {
-                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Empty line");
-                continue;
-            }
-
             if (ngx_json_log_write_sink_file(r->pool->log,
-                        location->file->fd, txt, len) == NGX_ERROR) {
+                        location->file->fd, txt) == NGX_ERROR) {
                 ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Write Error!");
             }
             continue;
@@ -804,10 +796,9 @@ ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             return NGX_CONF_ERROR;
         }
 
-        /* configure topic acks */
-        ngx_json_log_kafka_topic_conf_set_str(cf->pool,
-                new_location->kafka.rktc,
-                conf_req_required_acks_key, &conf_zero_value);
+        /* disable topic acks */
+        ngx_json_log_kafka_topic_disable_ack(cf->pool,
+                new_location->kafka.rktc);
 
         /* Set global variable */
         http_json_log_filter_has_kafka_locations = NGX_OK;

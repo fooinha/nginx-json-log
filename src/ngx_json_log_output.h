@@ -65,7 +65,7 @@ typedef struct ngx_json_log_output_location_s ngx_json_log_output_location_t;
 
 ngx_int_t
 ngx_json_log_write_sink_file(ngx_log_t *log,
-        ngx_fd_t fd, const char *txt, size_t len);
+        ngx_fd_t fd, const char *txt);
 
 #endif // __NGX_JSON_LOG_OUTPUT_H__
 

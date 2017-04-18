@@ -71,13 +71,16 @@ rd_kafka_conf_res_t
 ngx_json_log_kafka_topic_conf_set_str(ngx_pool_t *pool,
         rd_kafka_topic_conf_t *topic_conf, const char *key, ngx_str_t *str);
 
-ngx_int_t
-ngx_json_log_configure_kafka(ngx_pool_t *pool,
-        ngx_json_log_main_kafka_conf_t *conf);
+void
+ngx_json_log_kafka_topic_disable_ack(ngx_pool_t *pool,
+    rd_kafka_topic_conf_t      *rktc);
 
 ngx_int_t
 ngx_json_log_init_kafka(ngx_pool_t *pool,
         ngx_json_log_main_kafka_conf_t *kafka);
+ngx_int_t
+ngx_json_log_configure_kafka(ngx_pool_t *pool,
+        ngx_json_log_main_kafka_conf_t *conf);
 
 #endif// HTTP_JSON_LOG_KAFKA_ENABLED
 #endif// __NGX_LOG_JSON_KAFKA_H__
