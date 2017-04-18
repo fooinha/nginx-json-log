@@ -30,8 +30,7 @@ then
     then
         HAS_STREAM_JSON_LOG=true
         STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_module"
-
-        STREAM_FILTER_MODULES="$STREAM_FILTER_MODULES ngx_stream_json_log_write_filter_module"
+        STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_write_filter_module"
 
         NGX_ADDON_SRCS="$NGX_ADDON_SRCS                         \
          $ngx_addon_dir/src/ngx_stream_json_log_module.c        \

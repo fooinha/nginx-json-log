@@ -34,12 +34,12 @@ typedef struct {
 } ngx_stream_json_log_write_filter_ctx_t;
 
 
-static ngx_int_t ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s,
+static ngx_int_t ngx_stream_json_log_write_filter(ngx_stream_session_t *s,
     ngx_chain_t *in, ngx_uint_t from_upstream);
 static ngx_int_t ngx_stream_json_log_write_filter_init(ngx_conf_t *cf);
 
 
-static ngx_stream_json_log_module_t  ngx_stream_json_log_write_filter_module_ctx = {
+static ngx_stream_module_t  ngx_stream_json_log_write_filter_module_ctx = {
     NULL,                                  /* preconfiguration */
     ngx_stream_json_log_write_filter_init, /* postconfiguration */
 
@@ -68,7 +68,7 @@ ngx_module_t  ngx_stream_json_log_write_filter_module = {
 
 
 static ngx_int_t
-ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *in,
+ngx_stream_json_log_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
     ngx_uint_t from_upstream)
 {
     off_t                           size;
@@ -76,6 +76,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
     ngx_chain_t                    *cl, *ln, **ll, **out, *chain;
     ngx_connection_t               *c;
     ngx_stream_json_log_write_filter_ctx_t  *ctx;
+
 
     ctx = ngx_stream_get_module_ctx(s, ngx_stream_json_log_write_filter_module);
 
@@ -114,7 +115,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
         ll = &cl->next;
 
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "write old buf t:%d f:%d %p, pos %p, size: %z "
+                       "XXX write old buf t:%d f:%d %p, pos %p, size: %z "
                        "file: %O, size: %O",
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
@@ -125,7 +126,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                          "zero size buf in writer "
+                          "XXX zero size buf in writer "
                           "t:%d r:%d f:%d %p %p-%p %p %O-%O",
                           cl->buf->temporary,
                           cl->buf->recycled,
@@ -170,7 +171,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
         ll = &cl->next;
 
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "write new buf t:%d f:%d %p, pos %p, size: %z "
+                       "XXX write new buf t:%d f:%d %p, pos %p, size: %z "
                        "file: %O, size: %O",
                        cl->buf->temporary, cl->buf->in_file,
                        cl->buf->start, cl->buf->pos,
@@ -181,7 +182,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
 #if 1
         if (ngx_buf_size(cl->buf) == 0 && !ngx_buf_special(cl->buf)) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                          "zero size buf in writer "
+                          "XXX zero size buf in writer "
                           "t:%d r:%d f:%d %p %p-%p %p %O-%O",
                           cl->buf->temporary,
                           cl->buf->recycled,
@@ -216,7 +217,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
     *ll = NULL;
 
     ngx_log_debug3(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                   "stream write filter: l:%ui f:%ui s:%O", last, flush, size);
+                   "XXX stream write filter: l:%ui f:%ui s:%O", last, flush, size);
 
     if (size == 0
         && !(c->buffered & NGX_LOWLEVEL_BUFFERED)
@@ -236,7 +237,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
         }
 
         ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                      "the stream output chain is empty");
+                      "XXX the stream output chain is empty");
 
         ngx_debug_point();
 
@@ -246,7 +247,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
     chain = c->send_chain(c, *out, 0);
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                   "stream write filter %p", chain);
+                   "XXX stream write filter %p", chain);
 
     if (chain == NGX_CHAIN_ERROR) {
         c->error = 1;
@@ -264,7 +265,7 @@ ngx_stream_json_log_write_filter(ngx_stream_json_log_session_t *s, ngx_chain_t *
     if (chain) {
         if (c->shared) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                          "shared connection is busy");
+                          "XXX shared connection is busy");
             return NGX_ERROR;
         }
 
@@ -286,6 +287,8 @@ static ngx_int_t
 ngx_stream_json_log_write_filter_init(ngx_conf_t *cf)
 {
     ngx_stream_top_filter = ngx_stream_json_log_write_filter;
+
+    printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
 
     return NGX_OK;
 }
