@@ -64,13 +64,9 @@ RUN hg clone http://hg.nginx.org/nginx
 
 WORKDIR /build/nginx
 # Configure , make and install
-<<<<<<< HEAD
 RUN ./auto/configure --add-module=/build/nginx-json-log --with-debug --with-http_perl_module --with-http_geoip_module --with-mail  --with-stream --with-ld-opt="-Wl,-E"
 
 RUN make install
-=======
-RUN cd nginx-`apt-cache show nginx | grep "Version:"| cut -d ' ' -f2- | cut -d'-' -f1` && ./configure --add-module=/build/nginx-json-log --with-debug --with-http_perl_module --with-http_geoip_module --with-mail  --with-stream --with-ld-opt="-Wl,-E" && make install
->>>>>>> ngx-json-log: 0.0.5 release
 
 # Get test framework
 RUN git clone https://github.com/openresty/test-nginx.git
@@ -79,11 +75,7 @@ RUN git clone https://github.com/openresty/test-nginx.git
 RUN cd test-nginx/ && cpanm . && cpanm install JSON
 
 # Run exuberant ctags
-<<<<<<< HEAD
 RUN cd /build/nginx-json-log && ctags -R src/ ../nginx/src/
-=======
-RUN cd nginx-json-log && ctags -R src/ ../nginx-1.*/src/
->>>>>>> ngx-json-log: 0.0.5 release
 
 # Install files
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf
