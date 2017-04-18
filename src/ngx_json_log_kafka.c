@@ -314,4 +314,23 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
 
     return NGX_OK;
 }
+
+void
+ngx_json_log_kafka_topic_disable_ack(ngx_pool_t *pool,
+        rd_kafka_topic_conf_t *rktc) {
+
+    static const char *conf_req_required_acks_key  = "request.required.acks";
+    static ngx_str_t   conf_zero_value             = ngx_string("0");
+
+    if (! pool) {
+        return;
+    }
+
+    if (! rktc) {
+        return;
+    }
+
+    ngx_json_log_kafka_topic_conf_set_str(pool, rktc,
+            conf_req_required_acks_key, &conf_zero_value);
+}
 #endif// HTTP_JSON_LOG_KAFKA_ENABLED
