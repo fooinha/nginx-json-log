@@ -23,14 +23,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_HTTP_LOG_JSON_MODULE_H__
-#define __NGX_HTTP_LOG_JSON_MODULE_H__
+#ifndef __NGX_HTTP_JSON_LOG_MODULE_H__
+#define __NGX_HTTP_JSON_LOG_MODULE_H__
+
+#define NGX_JSON_LOG_VER    "0.0.5"
+
+#include <ngx_core.h>
+
+
+struct ngx_http_json_log_loc_conf_s {
+    ngx_array_t                               *locations;
+    ngx_array_t                               *formats;
+};
+
+typedef struct ngx_http_json_log_loc_conf_s   ngx_http_json_log_loc_conf_t;
+
+struct ngx_http_json_log_srv_conf_s {
+    ngx_array_t                               *locations;
+    ngx_array_t                               *formats;
+};
+
+typedef struct ngx_http_json_log_srv_conf_s     ngx_http_json_log_srv_conf_t;
 
 ngx_int_t
-ngx_http_log_json_needs_body_filter();
+ngx_http_json_log_needs_body_filter();
 
 ngx_int_t
-ngx_http_log_json_needs_header_filter();
+ngx_http_json_log_needs_header_filter();
 
-#endif // __NGX_HTTP_LOG_JSON_MODULE_H__
+#endif // __NGX_HTTP_JSON_LOG_MODULE_H__
 

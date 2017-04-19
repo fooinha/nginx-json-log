@@ -1,0 +1,129 @@
+version: '3'
+
+
+services:
+
+    zookeeper:
+        hostname: zookeeper
+        container_name: nginx-json-zookeeper
+        image: wurstmeister/zookeeper
+        ports:
+          - "2181:2181"
+        expose:
+          - 2181
+        network_mode: bridge
+
+    kafka:
+        hostname: kafka
+        container_name: nginx-json-kafka
+        image: wurstmeister/kafka
+        depends_on:
+          - zookeeper
+        links:
+          - zookeeper:zk
+        ports:
+          - "9092:9092"
+        expose:
+          - 9092
+        network_mode: bridge
+        environment:
+          KAFKA_ADVERTISED_HOST_NAME: "kafka"
+          KAFKA_ADVERTISED_PORT: "9092"
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+    nginx:
+        build: ./alpine-nginx-http-log-json
+        hostname: nginx
+        container_name: nginx-json
+        depends_on:
+          - kafka
+        links:
+          - kafka:kafka
+        ports:
+          - "80:80"
+        expose:
+          - 80
+        network_mode: bridge
+        tty: true
+        privileged: true
+        cap_add:
+          - ALL
+
+#    nginx-dev:
+#        build: ./debian-nginx-http-log-json
+#        hostname: nginx-dev
+#        container_name: nginx-json-dev
+#        depends_on:
+#          - kafka
+#        links:
+#          - kafka:kafka
+#        ports:
+#          - "81:81"
+#        expose:
+#          - 81
+#        network_mode: bridge
+#        tty: true
+#        privileged: true
+#        cap_add:
+#          - ALL
+#
+#    # in linux:
+#    # sudo sysctl -w vm.max_map_count=262144
+#    # https://github.com/docker-library/elasticsearch/issues/111
+#    elasticsearch:
+#       image: docker.elastic.co/elasticsearch/elasticsearch:5.3.0
+#       container_name: nginx-json-elasticsearch
+#       hostname: elasticsearch
+#       ports:
+#          - 9200:9200
+#          - 9300:9300
+#       expose:
+#          - 9200
+#          - 9300
+#       network_mode: bridge
+#       environment:
+#          - XPACK_SECURITY_ENABLED=false
+#          - "xpack.security.enabled=false"
+#
+#    logstash:
+#       image: docker.elastic.co/logstash/logstash:5.3.0
+#       container_name: nginx-json-logstash
+#       hostname: logstash
+#       ports:
+#          - 9600:9600
+#          - 5044:5044
+#          - 5050:5050
+#       expose:
+#          - 9600
+#          - 5044
+#          - 5050
+#       links:
+#          - elasticsearch
+#          - kafka
+#       depends_on:
+#          - elasticsearch
+#          - kafka
+#       network_mode: bridge
+#       privileged: true
+#       cap_add:
+#          - ALL
+#       volumes:
+#          - ./logstash-pipeline:/usr/share/logstash/pipeline/:ro
+#
+#    kibana:
+#       image: docker.elastic.co/kibana/kibana:5.3.0
+#       container_name: nginx-json-kibana
+#       hostname: kibana
+#       ports:
+#          - 5601:5601
+#       expose:
+#          - 5601
+#       links:
+#          - elasticsearch
+#       depends_on:
+#          - kafka
+#       network_mode: bridge
+#       environment:
+#          - XPACK_SECURITY_ENABLED=false
+#          - "xpack.security.enabled=false"
+

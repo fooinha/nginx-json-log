@@ -23,36 +23,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_HTTP_LOG_JSON_TEXT_H__
-#define __NGX_HTTP_LOG_JSON_TEXT_H__
+#ifndef __NGX_STREAM_JSON_LOG_MODULE_H__
+#define __NGX_STREAM_JSON_LOG_MODULE_H__
+#if nginx_version >= 1011002
 
-struct ngx_http_log_json_item_s {
-    const char                           *type;
-    ngx_str_t                            *name;
-    ngx_str_t                            var_name;
-    ngx_int_t                            is_array;
-    ngx_http_compile_complex_value_t     *ccv;
+#include <ngx_core.h>
+
+struct ngx_stream_json_log_srv_conf_s {
+    ngx_array_t                               *locations;
+    ngx_array_t                               *formats;
 };
 
-typedef struct ngx_http_log_json_item_s  ngx_http_log_json_item_t;
+typedef struct ngx_stream_json_log_srv_conf_s   ngx_stream_json_log_srv_conf_t;
 
-const char * ngx_http_log_json_type_string();
-const char * ngx_http_log_json_type_integer();
-const char * ngx_http_log_json_type_real();
-const char * ngx_http_log_json_type_true();
-const char * ngx_http_log_json_type_false();
-const char * ngx_http_log_json_type_null();
+#endif
 
-/* Global alloc funcs registration */
-void
-ngx_http_log_json_set_alloc_funcs();
-
-void
-set_current_mem_pool(ngx_pool_t *pool);
-
-/* Dumps to text format the JSON for the items for this request. */
-char *
-ngx_http_log_json_items_dump_text(ngx_http_request_t *r, ngx_array_t *items);
-
-#endif // __NGX_HTTP_LOG_JSON_TEXT_H__
+#endif // __NGX_STREAM_JSON_LOG_MODULE_H__
 

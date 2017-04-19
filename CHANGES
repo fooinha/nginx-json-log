@@ -1,3 +1,22 @@
+Changes with ngx-json-log 0.0.4                                     19 Apr 2017
+    *) json log for stream
+    *) json log http bad requests
+       *)  directives log_err_json_*
+    *) kafka
+       *) msg-id from $request_id if available
+       *) optional support if available
+    *) docker
+       *) development docker container -> debian
+       *) runtime docker container -> alpine
+       *) full log format configuration
+       *) elk services
+    *) documentation
+       *)  mail log example
+
+Changes with ngx-json-log 0.0.4                                      9 Apr 2017
+    *) stream module log handler
+    *) rename to nxg-json-log
+
 Changes with ngx-http-log-json 0.0.4                                 4 Apr 2017
     *) module variable $http_log_json_req_headers
     *) module variable $http_log_json_resp_headers

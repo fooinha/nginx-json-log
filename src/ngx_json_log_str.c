@@ -23,11 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <ngx_http_log_json_str.h>
+#include <ngx_json_log_str.h>
 
 /* duplicates and set as null terminated */
 u_char *
-ngx_http_log_json_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
+ngx_json_log_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
 
     u_char  *dst;
 
@@ -41,7 +41,7 @@ ngx_http_log_json_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
 }
 
 ngx_str_t *
-ngx_http_log_json_str_dup_from_buf_len(ngx_pool_t *pool,
+ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
         ngx_str_t *src, size_t len) {
 
     ngx_str_t *str = ngx_pcalloc(pool, sizeof(ngx_str_t));
@@ -61,7 +61,7 @@ ngx_http_log_json_str_dup_from_buf_len(ngx_pool_t *pool,
 }
 
 const char *
-ngx_http_log_json_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len) {
+ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len) {
 
     char *dst;
 
@@ -75,7 +75,7 @@ ngx_http_log_json_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len) {
 }
 
 u_char *
-ngx_http_log_json_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
+ngx_json_log_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
 
     u_char  *dst;
     size_t l = ngx_min(src->len, len);
@@ -90,7 +90,7 @@ ngx_http_log_json_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
 }
 
 ngx_int_t
-ngx_http_log_json_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
+ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
 
     if (! src) {
         return NGX_ERROR;
@@ -110,7 +110,7 @@ ngx_http_log_json_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
  * by given `separator`.
  */
 ngx_uint_t
-ngx_http_log_json_str_split_count(ngx_str_t *value, u_char separator) {
+ngx_json_log_str_split_count(ngx_str_t *value, u_char separator) {
 
     ngx_uint_t ret = 0;
     u_char has = 0;

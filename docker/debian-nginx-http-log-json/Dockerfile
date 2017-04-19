@@ -4,7 +4,7 @@ LABEL maintainer "fooinha@gmail.com"
 
 # Build arguments
 ARG DEBIAN_REPO_HOST=httpredir.debian.org
-ARG GIT_LOCATION=https://github.com/fooinha/nginx-http-log-json.git
+ARG GIT_LOCATION=https://github.com/fooinha/nginx-json-log.git
 ARG GIT_BRANCH=master
 
 # Mirror to my location
@@ -40,6 +40,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing \
     libgeoip-dev \
     libperl-dev \
     python \
+    mercurial \
     vim \
     bind9-host \
     procps \
@@ -56,13 +57,16 @@ WORKDIR /build
 
 # Fetches and clones from git location
 RUN git clone ${GIT_LOCATION}
-RUN cd nginx-http-log-json && git checkout ${GIT_BRANCH}
+RUN cd nginx-json-log && git checkout ${GIT_BRANCH}
 
-# Get nginx source code
-RUN apt-get source nginx
+# Clone from nginx
+RUN hg clone http://hg.nginx.org/nginx
 
+WORKDIR /build/nginx
 # Configure , make and install
-RUN cd nginx-`apt-cache show nginx | grep "Version:"| cut -d ' ' -f2- | cut -d'-' -f1` && ./configure --with-debug --with-http_perl_module --add-module=/build/nginx-http-log-json --with-http_geoip_module && make install 
+RUN ./auto/configure --add-module=/build/nginx-json-log --with-debug --with-http_perl_module --with-http_geoip_module --with-mail  --with-stream --with-ld-opt="-Wl,-E"
+
+RUN make install
 
 # Get test framework
 RUN git clone https://github.com/openresty/test-nginx.git
@@ -71,7 +75,7 @@ RUN git clone https://github.com/openresty/test-nginx.git
 RUN cd test-nginx/ && cpanm . && cpanm install JSON
 
 # Run exuberant ctags
-RUN cd nginx-http-log-json && ctags -R src/ ../nginx-1.*/src/
+RUN cd /build/nginx-json-log && ctags -R src/ ../nginx/src/
 
 # Install files
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf

@@ -23,32 +23,28 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_HTTP_LOG_JSON_VARIABLES_H__
-#define __NGX_HTTP_LOG_JSON_VARIABLES_H__
+#ifndef __NGX_JSON_LOG_STR_H__
+#define __NGX_JSON_LOG_STR_H__
 
-#include <ngx_config.h>
-#include <ngx_http_variables.h>
+#include <ngx_core.h>
 
-void
-ngx_http_log_json_register_variables(ngx_conf_t *cf);
+const char *
+ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len);
 
-void
-ngx_http_log_json_set_variable_resp_headers(ngx_http_request_t *r,
-            ngx_http_variable_value_t *v, uintptr_t data);
+u_char *
+ngx_json_log_str_dup(ngx_pool_t *pool, ngx_str_t *src);
 
-void
-ngx_http_log_json_set_variable_req_body(ngx_http_request_t *r,
-            ngx_http_variable_value_t *v, uintptr_t data);
+ngx_str_t *
+ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
+        ngx_str_t *src, size_t len);
 
-ngx_int_t
-ngx_http_log_json_is_local_variable(ngx_str_t *name);
+u_char *
+ngx_json_log_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len);
 
 ngx_int_t
-ngx_http_log_json_local_variable_needs_body_filter(ngx_str_t *name);
+ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst);
 
-ngx_int_t
-ngx_http_log_json_local_variable_needs_header_filter(ngx_str_t *name);
+ngx_uint_t
+ngx_json_log_str_split_count(ngx_str_t *value, u_char separator);
 
-
-#endif // __NGX_HTTP_LOG_JSON_VARIABLES_H__
-
+#endif //__NGX_JSON_LOG_STR_H__

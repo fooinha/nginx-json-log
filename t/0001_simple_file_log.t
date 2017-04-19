@@ -95,9 +95,9 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format json_1 'literal root;';
+            json_log_format json_1 'literal root;';
 
-            http_log_json_output file:test.1.json json_1;
+            json_log file:test.1.json json_1;
      }
 --- request
     GET /kasha
@@ -110,7 +110,7 @@ __DATA__
       location /kasha {
             return 200 "hello";
 
-            http_log_json_format json_2 '
+            json_log_format json_2 '
                b:true         true;
                b:false        false;
                n:null         whatever;
@@ -118,7 +118,7 @@ __DATA__
                i:int          2014;
                literal        root;
             ';
-            http_log_json_output file:test.2.json json_2;
+            json_log file:test.2.json json_2;
      }
 --- request
     GET /kasha
@@ -131,7 +131,7 @@ __DATA__
       location /kasha {
             return 200 "hello";
 
-            http_log_json_format json_3 '
+            json_log_format json_3 '
                b:true         true;
                b:false        false;
                n:null         whatever;
@@ -139,7 +139,7 @@ __DATA__
                i:int          2014;
                literal root;
             ' if=0;
-            http_log_json_output file:test.3.json json_3;
+            json_log file:test.3.json json_3;
      }
 --- request
     GET /kasha
@@ -151,11 +151,11 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format json_4 '
+            json_log_format json_4 '
                a:i:list       1;
                a:list     string;
             ';
-            http_log_json_output file:test.4.json json_4;
+            json_log file:test.4.json json_4;
      }
 --- request
     GET /kasha
@@ -167,10 +167,10 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format json_5 '
-               headers        $http_log_json_req_headers;
+            json_log_format json_5 '
+               headers        $http_json_log_req_headers;
             ';
-            http_log_json_output file:test.5.json json_5;
+            json_log file:test.5.json json_5;
      }
 --- request
     GET /kasha
@@ -182,10 +182,10 @@ __DATA__
 --- config
       location /kasha {
             return 200 "hello";
-            http_log_json_format json_6 '
-               headers        $http_log_json_resp_headers;
+            json_log_format json_6 '
+               headers        $http_json_log_resp_headers;
             ';
-            http_log_json_output file:test.6.json json_6;
+            json_log file:test.6.json json_6;
      }
 --- request
     GET /kasha
