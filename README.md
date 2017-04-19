@@ -1,12 +1,14 @@
-# ngx-http-log-json  [![Build Status](https://travis-ci.org/fooinha/nginx-http-log-json.svg?branch=master)](https://travis-ci.org/fooinha/nginx-http-log-json)
+# ngx-json-log  [![Build Status](https://travis-ci.org/fooinha/nginx-json-log.svg?branch=master)](https://travis-ci.org/fooinha/nginx-json-log)
 
-nginx http module for logging in custom json format - aka kasha (🍲)
+nginx modules for logging in custom json format - aka kasha (🍲)
 
 ## Description
 
 This module adds to nginx the ability of advanced JSON logging of HTTP requests per location.
 
-It's possible to log to a destination ouput any request made to a specific nginx location.
+This module adds to nginx the ability of advanced JSON logging of Stream connections per server.
+
+It's possible to log to a destination ouput any request/session made to a specific nginx location.
 
 The output format is configurable.
 
@@ -15,6 +17,13 @@ It also allows to log complex and multi-level JSON documents.
 It supports logging to text file or to a kafka topic.
 
 It supports multiple output destinations with multiple formats for a location.
+
+### Current version and limitations
+
+Current version released is 0.0.5.
+
+Stream proxy logging is only available when using nginx (>= 1.11.2).
+
 
 ## Use cases
 
@@ -31,11 +40,12 @@ A quick example:
 
 ### Configuration
 
-Each logging configuration is based on a http_log_json_format. (🍲)
+Each logging configuration is based on a json_log_format. (🍲)
 
-A http_log_json_format is a ';' separated list of items to include in the logging preparation.
+A json_log_format is a ';' separated list of items to include in the logging preparation.
 
 The left hand side part of item will be the JSON Path for the variable name
+
 The left hand side part can be prefixed with 's:', 'i:', 'r:', 'b:' or 'n:', so, the JSON encoding type can be controlled.
 
 * 's:' - JSON string ( default )
@@ -54,13 +64,32 @@ For this, known or previously setted variables, can be used by using the '$' bef
 
 Common HTTP nginx builtin variables like $uri, or any other variable set by other handler modules can be used.
 
+Common STREAM nginx builtin variables like $remote_addr, or any other variable set by other handler modules can be used.
+
 Additional variables are provided by this module. See the available variables below at [Variables section](#variables).
 
-The output is sent to the location specified by the first http_log_json_format argument.
+The output is sent to the location specified by the first json_log_format argument.
 The possible output locations are:
 
 * "file:" - The logging location will be a local filesystem file.
 * "kafka:" - The logging location will be a Kafka topic.
+
+#### Kafka Message Id
+
+For HTTP logging, if kafka output is used the value from $request_id nginx variable will be used to set kafka's message id.
+
+The $request_id is only available for nginx (>=1.11.0).
+
+
+#### Log HTTP Bad Requests
+
+Nginx will short circuit response if the client sends a Bad Request. In that case, the log handler will not be run.
+
+In order to, capture and log these requests we can define at server level, a format and output location for this requests.
+
+The directives json_err_log_* (same suffixes as the directives for location logging), should be used for this case.
+
+Additionally, the variable $http_json_err_log_req will be set with a base64 encodede string for the data sent from the client, until the limit set by **http_json_log_req_body_limit** is reached.
 
 #### Example Configuration
 
@@ -68,7 +97,7 @@ The possible output locations are:
 ##### A simple configuration example
 
 ```yaml
-     http_log_json_format my_log '
+     json_log_format my_log '
         src.ip                      $remote_addr;
         src.port                    $remote_port;
         dst.ip                      $server_addr;
@@ -88,7 +117,7 @@ The possible output locations are:
         a:list                      string;
      ';
 
-     http_log_json_output file:/tmp/log my_log;'
+     json_log file:/tmp/log my_log;'
 ```
 
 This will produce the following JSON line to '/tmp/log' file .
@@ -138,11 +167,11 @@ To ease reading, it's shown here formatted with newlines.
                         return "";
         }';
 
-       http_log_json_format with_perl '
+       json_log_format with_perl '
             comm.http.server_name       $server_name;
             perl.bar                    $bar;
        ';
-       http_log_json_output file:/tmp/log with_perl'
+       json_log file:/tmp/log with_perl'
  ```
 
  A request sent to **/bar** .
@@ -161,16 +190,55 @@ To ease reading, it's shown here formatted with newlines.
 }
 ```
 
+##### A example for stream servers
+```yaml
+       json_log_format stream '
+        _date                       $time_iso8601;
+        src.addr                    $remote_addr;
+        src.port                    $remote_port
+        session.bytes.received      $bytes_received;
+        session.bytes.sent          $bytes_received;
+        session.connection          $connection;
+        session.protocol            $protocol;
+        session.time                $session_time;
+        session.status              $status;
+       ';
+       json_log file:/tmp/stream.log stream'
+ ```
+
+ ```json
+
+{
+  "_date": "2017-04-09T20:52:41+00:00",
+  "session": {
+    "bytes": {
+      "received": "23",
+      "sent": "23"
+    },
+    "connection": "1",
+    "protocol": "TCP",
+    "status": "200",
+    "time": "6.875"
+  },
+  "src": {
+    "addr": "127.0.0.1"
+  }
+}
+
+
+ ```
+
 ### Directives
 
----
-* Syntax: **http_log_json_format** _format_name_ { _format_ } _if_=...;
+
+* Syntax: **json_log_format** _format_name_ { _format_ } _if_=...;
 * Default: —
 * Context: http location
+* Context: stream server
 
 ###### _format_name_ ######
 
-Specifies a format name that can be used by a **http_log_json_output** directive
+Specifies a format name that can be used by a **json_log** directive
 
 ###### _format_ ######
 
@@ -182,9 +250,11 @@ Works the same way as _if_ argument from http [access_log](http://nginx.org/en/d
 
 ---
 
-* Syntax: **http_log_json_output** _location_ _format_name_ 
+* Syntax: **json_log** _location_ _format_name_
 * Default: —
 * Context: http location
+* Context: stream server
+
 
 ###### _location_ ######
 
@@ -196,7 +266,7 @@ For a **file:** type the value part will be a local file name. e.g. **file:**/tm
 
 For a **kafka:** type the value part will be the topic name. e.g. **kafka:** topic
 
-The kafka output only happens if a list of brokers is defined by **http_log_json_kafka_brokers** directive.
+The kafka output only happens if a list of brokers is defined by **json_log_kafka_brokers** directive.
 
 ###### _format_name_ ######
 
@@ -204,64 +274,136 @@ The format to use when writing to output destination.
 
 ---
 
-* Syntax: **http_log_json_kafka_brokers** list of brokers separated by spaces;
+* Syntax: **json_log_kafka_brokers** list of brokers separated by spaces;
 * Default: —
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_client_id** _id_;
-* Default: http_log_json
+* Syntax: **json_log_kafka_client_id** _id_;
+* Default: nginx
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_compression** _compression_codec_;
+* Syntax: **json_log_kafka_compression** _compression_codec_;
 * Default: snappy
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_log_level** _numeric_log_level_;
+* Syntax: **json_log_kafka_log_level** _numeric_log_level_;
 * Default: 6
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_max_retries** _numeric_;
+* Syntax: **json_log_kafka_max_retries** _numeric_;
 * Default: 0
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_buffer_max_messages** _numeric_;
+* Syntax: **json_log_kafka_buffer_max_messages** _numeric_;
 * Default: 100000
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_backoff_ms** _numeric_;
+* Syntax: **json_log_kafka_backoff_ms** _numeric_;
 * Default: 10
 * Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_kafka_partition** _partition_;
+* Syntax: **json_log_kafka_partition** _partition_;
 * Default: RD_KAFKA_PARTITION_UA
-* Context: http local
+* Context: http main
+* Context: stream main
 
 ---
 
-* Syntax: **http_log_json_req_body_limit** _size_;
+* Syntax: **http_json_log_req_body_limit** _size_;
 * Default: 512
-* Context: local
+* Context: http local
 
 Limits the body size to log.
 Argument is a size string. May be 1k or 1M, but avoid this!
 
+
+#### Error Directives
+
+* Syntax: **json_err_log_format** _format_name_ { _format_ } _if_=...;
+* Default: —
+* Context: http server
+
+----
+
+* Syntax: **json_err_log** _location_ _format_name_
+* Default: —
+* Context: http server
+
+----
+
+* Syntax: **json_err_log_kafka_brokers** list of brokers separated by spaces;
+* Default: —
+* Context: http main
+
+----
+
+* Syntax: **json_err_log_kafka_client_id** _id_;
+* Default: nginx
+* Context: http server
+
+----
+
+* Syntax: **json_err_log_kafka_compression** _compression_codec_;
+* Default: snappy
+* Context: http server
+
+----
+
+* Syntax: **json_err_log_kafka_max_retries** _numeric_;
+* Default: 0
+* Context: http main
+
+
+----
+
+* Syntax: **json_err_log_kafka_log_level** _numeric_log_level_;
+* Default: 6
+* Context: http server
+
+----
+
+* Syntax: **json_err_log_kafka_buffer_max_messages** _numeric_;
+* Default: 100000
+* Context: http main
+
+----
+
+* Syntax: **json_err_log_kafka_backoff_ms** _numeric_;
+* Default: 10
+* Context: http main
+
+
+----
+
+* Syntax: **json_err_log_kafka_partition** _partition_;
+* Default: RD_KAFKA_PARTITION_UA
+* Context: http main
+
+
 ### Variables
 
-#### $http_log_json_req_headers;
+#### $http_json_log_req_headers;
 
 Creates a json object with all request headers.
 
@@ -277,7 +419,7 @@ Example:
     }
 ```
 
-#### $http_log_json_req_body;
+#### $http_json_log_req_body;
 
 Log request body encoded as base64.
 It requires proxy_pass configuration at logging location.
@@ -289,7 +431,7 @@ Example:
         "body": "Zm9v"
     }
 ```
-#### $http_log_json_resp_headers;
+#### $http_json_log_resp_headers;
 
 Creates a json object with available response headers.
 
@@ -304,6 +446,81 @@ Example:
           "Accept-Ranges": "bytes"
         }
 ```
+
+### Logging mail proxies authentication
+
+If nginx is used for mail proxy and **auth_http** is set, then, it's possible to log the HTTP requests for authentication service.
+
+An example with full configuration.
+
+#### The mail proxy
+
+```
+mail {
+    server_name mail.local;
+    auth_http   localhost:9876/;
+
+    server {
+        listen    25;
+        protocol  smtp;
+        smtp_auth none;
+    }
+}
+```
+
+#### The HTTP auth service
+
+```
+http {
+    server {
+        listen 9876;
+
+        location / {
+            add_header Auth-Status OK;
+            add_header Auth-Server 127.0.0.1;
+            add_header Auth-Port 2525;
+
+            root   html;
+            index  index.html index.htm;
+
+            json_log_format mail_log '
+               _date                  $time_iso8601;
+               headers                $http_json_log_req_headers;
+            ';
+
+            json_log file:/tmp/mail.log mail_log;
+        }
+
+        error_page 405 =200 $uri ;
+        error_page 404 =200 /index.html ;
+    }
+}
+```
+
+#### The output log JSON line. ( pretty printed ...)
+
+```
+{
+  "_date": "2017-04-12T23:58:07+00:00",
+  "headers": {
+    "Host": "localhost",
+    "Auth-Method": "none",
+    "Auth-User": "",
+    "Auth-Pass": "",
+    "Auth-Protocol": "smtp",
+    "Auth-Login-Attempt": "1",
+    "Client-IP": "127.0.0.1",
+    "Client-Host": "[UNAVAILABLE]",
+    "Auth-SMTP-Helo": "atacker.cloud",
+    "Auth-SMTP-From": "mail from: <bob>",
+    "Auth-SMTP-To": "rcpt to: <alice>"
+  }
+}
+```
+
+**Attention**: The Auth-Pass is not masked in any way, nor removed, so the client's value will be logged.
+
+
 
 ### Build
 
@@ -322,12 +539,10 @@ $ sudo apt-get install libjansson-dev librdkafka-dev
 Build as a common nginx module.
 
 ```bash
-$ ./configure --add-module=/build/ngx-http_log_json
+$ ./configure --add-module=/build/ngx_json_log
 $ make && make install
 
 ```
-
-
 
 ### Tests and Fair Warning
 
@@ -354,7 +569,7 @@ $ prove
 
 t/0001_simple_file_log.t .. ok
 All tests successful.
-Files=1, Tests=8,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.15 cusr  0.00 csys =  0.18 CPU)
+Files=1, Tests=12,  0 wallclock secs ( 0.02 usr  0.01 sys +  0.15 cusr  0.00 csys =  0.18 CPU)
 Result: PASS
 
 ```
@@ -425,10 +640,10 @@ Percentage of the requests served within a certain time (ms)
 
 real   1m36.057s
 user   0m5.390s
-sys   1m22.040s
+sys    1m22.040s
 
 $ wc -l /tmp/1M.log
-1000000 /tmp/1M.log 
+1000000 /tmp/1M.log
 ```
 
 ##### Logging to kafka topic
@@ -492,6 +707,53 @@ Percentage of the requests served within a certain time (ms)
 
 real   1m43.328s
 user   0m5.770s
-sys   1m21.380s
+sys    1m21.380s
+```
+
+#### Docker
+
+Docker images and a docker compose file is available at the ./docker directory.
+
+
+```
+$ docker-compose up --build -d
+
+Creating nginx-json-zookeeper
+Creating nginx-json-kafka
+Creating nginx-json
+
+```
+
+...
+
+
+```
+$ docker-compose ps
+        Name                      Command               State                         Ports
+------------------------------------------------------------------------------------------------------------------
+nginx-json             /bin/sh -c /usr/local/ngin ...   Up      0.0.0.0:80->80/tcp
+nginx-json-kafka       start-kafka.sh                   Up      0.0.0.0:9092->9092/tcp
+nginx-json-zookeeper   /bin/sh -c /usr/sbin/sshd  ...   Up      0.0.0.0:2181->2181/tcp, 22/tcp, 2888/tcp, 3888/tcp
+
+```
+
+An additional docker service for development it's available.
+
+Just uncomment the nginx-json-dev service block.
+
+Also docker services for the ELK stack are available.
+
+
+```
+         Name                        Command               State                                   Ports
+------------------------------------------------------------------------------------------------------------------------------------------
+nginx-json                 /bin/sh -c /usr/local/ngin ...   Up      0.0.0.0:80->80/tcp
+nginx-json-dev             /bin/bash                        Up      0.0.0.0:81->81/tcp
+nginx-json-elasticsearch   /bin/bash bin/es-docker          Up      0.0.0.0:9200->9200/tcp, 0.0.0.0:9300->9300/tcp
+nginx-json-kafka           start-kafka.sh                   Up      0.0.0.0:9092->9092/tcp
+nginx-json-kibana          /bin/sh -c /usr/local/bin/ ...   Up      0.0.0.0:5601->5601/tcp
+nginx-json-logstash        /usr/local/bin/docker-entr ...   Up      0.0.0.0:5044->5044/tcp, 0.0.0.0:5050->5050/tcp, 0.0.0.0:9600->9600/tcp
+nginx-json-zookeeper       /bin/sh -c /usr/sbin/sshd  ...   Up      0.0.0.0:2181->2181/tcp, 22/tcp, 2888/tcp, 3888/tcp
+
 ```
 

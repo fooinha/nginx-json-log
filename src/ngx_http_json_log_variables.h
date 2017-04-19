@@ -23,43 +23,32 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifndef __NGX_KASHA_KAFKA_H__
-#define __NGX_KASHA_KAFKA_H__
+#ifndef __NGX_HTTP_JSON_LOG_VARIABLES_H__
+#define __NGX_HTTP_JSON_LOG_VARIABLES_H__
 
-#include <ngx_core.h>
-#include <librdkafka/rdkafka.h>
+#include <ngx_config.h>
+#include <ngx_http_variables.h>
 
-/* configuration */
-rd_kafka_conf_t *
-http_log_json_kafka_conf_new(ngx_pool_t *pool);
+void
+ngx_http_json_log_register_variables(ngx_conf_t *cf);
 
-rd_kafka_conf_res_t
-http_log_json_kafka_conf_set_int(ngx_pool_t *pool,rd_kafka_conf_t *conf,
-                         const char * key, intmax_t value);
+void
+ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
+            ngx_http_variable_value_t *v, uintptr_t data);
 
-rd_kafka_conf_res_t
-http_log_json_kafka_conf_set_str(ngx_pool_t *pool, rd_kafka_conf_t *conf,
-                         const char * key, ngx_str_t *str);
+void
+ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
+            ngx_http_variable_value_t *v, uintptr_t data);
 
-/* handler */
-rd_kafka_t *
-http_log_json_kafka_producer_new(ngx_pool_t *pool, rd_kafka_conf_t *);
+ngx_int_t
+ngx_http_json_log_is_local_variable(ngx_str_t *name);
 
-/* tries to add a comma separated list of brokers */
-size_t
-http_log_json_kafka_add_brokers(ngx_pool_t *pool, rd_kafka_t *rk, ngx_array_t *brokers);
+ngx_int_t
+ngx_http_json_log_local_variable_needs_body_filter(ngx_str_t *name);
 
-/* topic confifuration */
-rd_kafka_topic_conf_t *
-http_log_json_kafka_topic_conf_new(ngx_pool_t* pool);
+ngx_int_t
+ngx_http_json_log_local_variable_needs_header_filter(ngx_str_t *name);
 
-/* topic */
-rd_kafka_topic_t *
-http_log_json_kafka_topic_new(ngx_pool_t *pool, rd_kafka_t *rk,
-                      rd_kafka_topic_conf_t *topic_conf, ngx_str_t *topic);
 
-rd_kafka_conf_res_t
-http_log_json_kafka_topic_conf_set_str(ngx_pool_t *pool, rd_kafka_topic_conf_t *topic_conf,
-                               const char *key, ngx_str_t *str);
+#endif // __NGX_HTTP_JSON_LOG_VARIABLES_H__
 
-#endif// __NGX_KASHA_KAFKA_H__
