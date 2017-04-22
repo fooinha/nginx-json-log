@@ -30,9 +30,9 @@ then
     then
         HAS_STREAM_JSON_LOG=true
         STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_module"
-
-
-        NGX_ADDON_SRCS="$NGX_ADDON_SRCS                         \
+        STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_preread_module"
+        NGX_ADDON_SRCS="$NGX_ADDON_SRCS                           \
+         $ngx_addon_dir/src/ngx_stream_json_log_preread_module.c  \
          $ngx_addon_dir/src/ngx_stream_json_log_module.c"
         echo " + ngx_json_log: stream support"
     fi
