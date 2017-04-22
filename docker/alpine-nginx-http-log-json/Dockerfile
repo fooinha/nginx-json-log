@@ -7,6 +7,7 @@ ARG GIT_LOCATION=https://github.com/fooinha/nginx-json-log.git
 ARG GIT_BRANCH=master
 
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
 RUN apk update
 
 RUN apk add --no-cache pcre
