@@ -31,16 +31,6 @@
 #include "ngx_json_log_text.h"
 #include "ngx_json_log_output.h"
 
-/* data structures */
-
-struct ngx_stream_json_log_main_conf_s {
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
-    ngx_json_log_main_kafka_conf_t  kafka;
-#endif
-};
-
-typedef struct ngx_stream_json_log_main_conf_s ngx_stream_json_log_main_conf_t;
-
 #ifdef HTTP_JSON_LOG_KAFKA_ENABLED
 /* global variable to indicate the we have kafka locations*/
 static ngx_int_t   stream_json_log_has_kafka_locations     = NGX_CONF_UNSET;
@@ -65,9 +55,9 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_command_t ngx_stream_json_log_commands[] = {
     /* FORMAT */
     { ngx_string("json_log_format"),
-        NGX_STREAM_SRV_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3,
-        ngx_stream_json_log_srv_format_block,
-        NGX_STREAM_SRV_CONF_OFFSET,
+        NGX_STREAM_MAIN_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3,
+        ngx_stream_json_log_main_format_block,
+        NGX_STREAM_MAIN_CONF_OFFSET,
         0,
         NULL
     },
@@ -337,6 +327,10 @@ ngx_stream_json_log_create_main_conf(ngx_conf_t *cf) {
     }
 #endif
 
+    /* create the items array for formats */
+    conf->formats = ngx_array_create(cf->pool, 1,
+            sizeof(ngx_json_log_format_t));
+
     return conf;
 }
 
@@ -353,10 +347,6 @@ ngx_stream_json_log_create_srv_conf(ngx_conf_t *cf) {
     /* create an array for the output locations */
     conf->locations = ngx_array_create(cf->pool, 1,
             sizeof(ngx_json_log_output_location_t));
-
-    /* create the items array for formats */
-    conf->formats = ngx_array_create(cf->pool, 1,
-            sizeof(ngx_json_log_format_t));
 
     return conf;
 }
@@ -385,14 +375,15 @@ static char *
 ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
     ngx_stream_json_log_srv_conf_t       *lc = conf;
+    ngx_stream_json_log_main_conf_t      *mcf = NULL;
     ngx_json_log_output_location_t       *new_location = NULL;
     ngx_json_log_format_t                *format;
     ngx_str_t                            *args = cf->args->elts;
     ngx_str_t                            *value = NULL;
     ngx_str_t                            *format_name;
-    ngx_uint_t                           found = 0;
-    size_t                               prefix_len;
-    size_t                               i;
+    ngx_uint_t                            found = 0;
+    size_t                                prefix_len;
+    size_t                                i;
 
     if (! args) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -400,10 +391,18 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         return NGX_CONF_ERROR;
     }
 
+    mcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_json_log_module);
+    if (!mcf) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "Missing main configuration");
+        return NGX_CONF_ERROR;
+    }
+
+
     /* Check if format exists by name */
     format_name = &args[2];
-    format = lc->formats->elts;
-    for (i = 0; i < lc->formats->nelts; i++) {
+    format = mcf->formats->elts;
+    for (i = 0; i < mcf->formats->nelts; i++) {
         if (ngx_strncmp(format_name->data, format[i].name.data,
                     format[i].name.len) == 0) {
             found = 1;

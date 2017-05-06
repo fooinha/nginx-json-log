@@ -51,16 +51,12 @@ struct ngx_json_log_format_s {
 typedef struct ngx_json_log_format_s     ngx_json_log_format_t;
 
 char *
-ngx_http_json_log_loc_format_block(ngx_conf_t *cf,
-        ngx_command_t *cmd, void *conf);
-
-char *
-ngx_http_json_log_srv_format_block(ngx_conf_t *cf,
+ngx_http_json_log_main_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf);
 
 #if nginx_version >= 1011002
 char *
-ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,
+ngx_stream_json_log_main_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf);
 #endif
 

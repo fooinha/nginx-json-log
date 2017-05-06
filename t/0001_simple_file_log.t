@@ -92,13 +92,13 @@ run_tests();
 __DATA__
 
 === TEST 1: single string literal value
+--- http_config
+    json_log_format json_1 'literal root;';
 --- config
-      location /kasha {
+        location /kasha {
             return 200 "hello";
-            json_log_format json_1 'literal root;';
-
             json_log file:test.1.json json_1;
-     }
+        }
 --- request
     GET /kasha
 --- response_body_filters eval
@@ -106,41 +106,42 @@ __DATA__
 --- error_code: 200
 
 === TEST 2: literal values
+--- http_config
+    json_log_format json_2 '
+       b:true         true;
+       b:false        false;
+       n:null         whatever;
+       r:real         1.1;
+       i:int          2014;
+       literal        root;
+    ';
 --- config
-      location /kasha {
+        location /kasha {
             return 200 "hello";
-
-            json_log_format json_2 '
-               b:true         true;
-               b:false        false;
-               n:null         whatever;
-               r:real         1.1;
-               i:int          2014;
-               literal        root;
-            ';
             json_log file:test.2.json json_2;
-     }
+        }
 --- request
     GET /kasha
 --- response_body_filters eval
 \&main::check_file_test_2
 --- error_code: 200
 
-=== TEST 3: if condiftion
+=== TEST 3: if condition
+--- http_config
+    json_log_format json_3 '
+       b:true         true;
+       b:false        false;
+       n:null         whatever;
+       r:real         1.1;
+       i:int          2014;
+       literal root;
+    ' if=0;
 --- config
-      location /kasha {
+        location /kasha {
             return 200 "hello";
 
-            json_log_format json_3 '
-               b:true         true;
-               b:false        false;
-               n:null         whatever;
-               r:real         1.1;
-               i:int          2014;
-               literal root;
-            ' if=0;
             json_log file:test.3.json json_3;
-     }
+        }
 --- request
     GET /kasha
 --- response_body_filters eval
@@ -148,15 +149,16 @@ __DATA__
 --- error_code: 200
 
 === TEST 4: arrays
+--- http_config
+    json_log_format json_4 '
+       a:i:list       1;
+       a:list     string;
+    ';
 --- config
-      location /kasha {
+        location /kasha {
             return 200 "hello";
-            json_log_format json_4 '
-               a:i:list       1;
-               a:list     string;
-            ';
             json_log file:test.4.json json_4;
-     }
+        }
 --- request
     GET /kasha
 --- response_body_filters eval
@@ -164,14 +166,15 @@ __DATA__
 --- error_code: 200
 
 === TEST 5: request headers
+--- http_config
+    json_log_format json_5 '
+       headers        $http_json_log_req_headers;
+    ';
 --- config
-      location /kasha {
+        location /kasha {
             return 200 "hello";
-            json_log_format json_5 '
-               headers        $http_json_log_req_headers;
-            ';
             json_log file:test.5.json json_5;
-     }
+        }
 --- request
     GET /kasha
 --- response_body_filters eval
@@ -179,14 +182,15 @@ __DATA__
 --- error_code: 200
 
 === TEST 5: response headers
+--- http_config
+    json_log_format json_6 '
+       headers        $http_json_log_resp_headers;
+    ';
 --- config
-      location /kasha {
+        location /kasha {
             return 200 "hello";
-            json_log_format json_6 '
-               headers        $http_json_log_resp_headers;
-            ';
             json_log file:test.6.json json_6;
-     }
+        }
 --- request
     GET /kasha
 --- response_body_filters eval

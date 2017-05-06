@@ -58,8 +58,9 @@ typedef struct ngx_http_json_log_resp_headers_s
 
 /* main config */
 struct ngx_http_json_log_filter_main_conf_s {
+    ngx_array_t                               *formats;
 #ifdef HTTP_JSON_LOG_KAFKA_ENABLED
-    ngx_json_log_main_kafka_conf_t  kafka;
+    ngx_json_log_main_kafka_conf_t             kafka;
 #endif
 };
 typedef struct ngx_http_json_log_filter_main_conf_s
@@ -108,9 +109,9 @@ static ngx_command_t ngx_http_json_log_filter_commands[] = {
         NULL
     },
     { ngx_string("json_err_log_format"),
-        NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3,
-        ngx_http_json_log_srv_format_block,
-        NGX_HTTP_SRV_CONF_OFFSET,
+        NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3,
+        ngx_http_json_log_main_format_block,
+        NGX_HTTP_MAIN_CONF_OFFSET,
         0,
         NULL
     },
@@ -666,6 +667,30 @@ ngx_http_json_log_filter_init(ngx_conf_t *cf) {
 }
 
 static void *
+ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf) {
+
+    ngx_http_json_log_filter_main_conf_t  *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_filter_main_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+    if (ngx_json_log_init_kafka(cf->pool, &conf->kafka) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "http_json_log: error initialize kafka conf");
+    }
+#endif
+
+    /* create the items array for formats */
+    conf->formats = ngx_array_create(cf->pool, 1,
+            sizeof(ngx_json_log_format_t));
+
+    return conf;
+}
+
+static void *
 ngx_http_json_log_filter_create_srv_conf(ngx_conf_t *cf) {
 
     ngx_http_json_log_srv_conf_t  *conf;
@@ -679,10 +704,6 @@ ngx_http_json_log_filter_create_srv_conf(ngx_conf_t *cf) {
     conf->locations = ngx_array_create(cf->pool, 1,
             sizeof(ngx_json_log_output_location_t));
 
-
-    /* create the items array for formats */
-    conf->formats = ngx_array_create(cf->pool, 1,
-            sizeof(ngx_json_log_format_t));
 
     return conf;
 }
@@ -714,14 +735,15 @@ static char *
 ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
     ngx_http_json_log_srv_conf_t         *lc = conf;
+    ngx_http_json_log_main_conf_t        *mcf;
     ngx_json_log_output_location_t       *new_location = NULL;
     ngx_json_log_format_t                *format;
     ngx_str_t                            *args = cf->args->elts;
     ngx_str_t                            *value = NULL;
     ngx_str_t                            *format_name;
-    ngx_uint_t                           found = 0;
-    size_t                               prefix_len;
-    size_t                               i;
+    ngx_uint_t                            found = 0;
+    size_t                                prefix_len;
+    size_t                                i;
 
     if (! args) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -729,10 +751,18 @@ ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         return NGX_CONF_ERROR;
     }
 
+    mcf = ngx_http_conf_get_module_main_conf(cf,
+            ngx_http_json_log_filter_module);
+    if (!mcf) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "Missing main configuration");
+        return NGX_CONF_ERROR;
+    }
+
     /* Check if format exists by name */
     format_name = &args[2];
-    format = lc->formats->elts;
-    for (i = 0; i < lc->formats->nelts; i++) {
+    format = mcf->formats->elts;
+    for (i = 0; i < mcf->formats->nelts; i++) {
         if (ngx_strncmp(format_name->data, format[i].name.data,
                     format[i].name.len) == 0) {
             found = 1;
@@ -855,24 +885,4 @@ ngx_http_json_log_filter_init_worker(ngx_cycle_t *cycle) {
 #endif
 
     return NGX_OK;
-}
-
-static void *
-ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf) {
-
-    ngx_http_json_log_filter_main_conf_t  *conf;
-
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_filter_main_conf_t));
-    if (conf == NULL) {
-        return NULL;
-    }
-
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
-    if (ngx_json_log_init_kafka(cf->pool, &conf->kafka) != NGX_OK) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                "http_json_log: error initialize kafka conf");
-    }
-#endif
-
-    return conf;
 }
