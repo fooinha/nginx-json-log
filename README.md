@@ -233,8 +233,8 @@ To ease reading, it's shown here formatted with newlines.
 
 * Syntax: **json_log_format** _format_name_ { _format_ } _if_=...;
 * Default: —
-* Context: http location
-* Context: stream server
+* Context: http main
+* Context: stream main
 
 ###### _format_name_ ######
 

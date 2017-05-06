@@ -727,12 +727,12 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
 }
 
 char *
-ngx_http_json_log_loc_format_block(ngx_conf_t *cf,
+ngx_http_json_log_main_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf) {
 
     ngx_str_t                            *args;
     ngx_json_log_format_t                *new_format;
-    ngx_http_json_log_loc_conf_t         *lc = conf;
+    ngx_http_json_log_main_conf_t        *mcf = conf;
     ngx_http_compile_complex_value_t     ccv;
     ngx_str_t                            s;
     ngx_uint_t                           items_len;
@@ -753,7 +753,7 @@ ngx_http_json_log_loc_format_block(ngx_conf_t *cf,
     }
 
     /*TODO*: to verify if format name is duplicated */
-    new_format = ngx_array_push(lc->formats);
+    new_format = ngx_array_push(mcf->formats);
 
     if (!new_format) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -808,7 +808,7 @@ ngx_http_json_log_srv_format_block(ngx_conf_t *cf,
 
     ngx_str_t                            *args;
     ngx_json_log_format_t                *new_format;
-    ngx_http_json_log_srv_conf_t         *lc = conf;
+    ngx_http_json_log_srv_conf_t         *scf = conf;
     ngx_http_compile_complex_value_t     ccv;
     ngx_str_t                            s;
     ngx_uint_t                           items_len;
@@ -829,7 +829,7 @@ ngx_http_json_log_srv_format_block(ngx_conf_t *cf,
     }
 
     /*TODO*: to verify if format name is duplicated */
-    new_format = ngx_array_push(lc->formats);
+    new_format = ngx_array_push(scf->formats);
 
     if (!new_format) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -881,12 +881,12 @@ ngx_http_json_log_srv_format_block(ngx_conf_t *cf,
 
 #if nginx_version >= 1011002
 char *
-ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,
+ngx_stream_json_log_main_format_block(ngx_conf_t *cf,
         ngx_command_t *cmd, void *conf) {
 
     ngx_str_t                            *args;
     ngx_json_log_format_t                *new_format;
-    ngx_stream_json_log_srv_conf_t       *lc = conf;
+    ngx_stream_json_log_main_conf_t      *mcf = conf;
     ngx_stream_compile_complex_value_t   ccv;
     ngx_str_t                            s;
     ngx_uint_t                           items_len;
@@ -907,7 +907,7 @@ ngx_stream_json_log_srv_format_block(ngx_conf_t *cf,
     }
 
     /*TODO*: to verify if format name is duplicated */
-    new_format = ngx_array_push(lc->formats);
+    new_format = ngx_array_push(mcf->formats);
 
     if (!new_format) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,

@@ -29,9 +29,21 @@
 
 #include <ngx_core.h>
 
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#include "ngx_json_log_kafka.h"
+#endif
+
+struct ngx_stream_json_log_main_conf_s {
+    ngx_array_t                               *formats;
+#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+    ngx_json_log_main_kafka_conf_t  kafka;
+#endif
+};
+
+typedef struct ngx_stream_json_log_main_conf_s  ngx_stream_json_log_main_conf_t;
+
 struct ngx_stream_json_log_srv_conf_s {
     ngx_array_t                               *locations;
-    ngx_array_t                               *formats;
 };
 
 typedef struct ngx_stream_json_log_srv_conf_s   ngx_stream_json_log_srv_conf_t;
