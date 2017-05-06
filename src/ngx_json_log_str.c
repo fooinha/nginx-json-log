@@ -132,3 +132,129 @@ ngx_json_log_str_split_count(ngx_str_t *value, u_char separator) {
     }
     return ret;
 }
+
+size_t
+ngx_json_log_hexdump_length(size_t len, size_t blocksz) {
+    size_t                   sz = 0;
+    if (!len) {
+        return sz;
+    }
+
+    size_t b = len / blocksz;
+    if (b && (len % blocksz)) {
+        b++;
+    }
+
+    if (!b) {
+        b++;
+    }
+
+    sz = (((blocksz * 5) * b) - (2 * b) - (10 * b));
+
+    return sz;
+}
+
+void
+ngx_json_log_hexdump(ngx_str_t *src, ngx_str_t *dst) {
+    static const size_t            blocksz = 16;
+    size_t                         b, i, l;
+    unsigned char                 *pos;
+    size_t                         blocks;
+    ngx_int_t                      finished = 0;
+
+    if (! dst) {
+        return;
+    }
+
+    if (! src || ! src->data || ! src->len) {
+        return;
+    }
+
+    if (! dst || ! dst->data || ! src->len) {
+        return;
+    }
+
+    blocks = dst->len / blocksz;
+    pos = dst->data;
+    for (b = 0; b <= blocks ; ++b) {
+/*
+        if (b * blocksz < src->len) {
+            snprintf((char *)pos, 8,
+                    "%08X", (unsigned int) (b * blocksz));
+
+            pos += 8;
+            ngx_snprintf(pos, 2, "  ");
+            pos += 2;
+            //printf("%08x  ", (unsigned int) (b * blocksz));
+        } else {
+            break;
+        }
+*/
+
+        for (i = 0; i < blocksz ; ++i) {
+            l = (b * blocksz)  + i;
+            if (l >= src->len) {
+                finished = 1;
+                break;
+            }
+            snprintf((char *)pos, 3,
+                    "%x", src->data[l]);
+            pos += 2;
+            ngx_snprintf(pos, 1, " ");
+            pos ++;
+            if (l && (l % (blocksz/2) == 0) && (l % blocksz)) {
+                ngx_snprintf(pos, 1, " ");
+                pos++;
+            }
+        }
+
+        for (; i < blocksz; ++i) {
+            ngx_snprintf(pos, 3, ".. ");
+            pos +=3;
+            //printf(".. ");
+            /* half separator */
+            if (i % (blocksz/2) == 0) {
+                //printf(" ");
+                ngx_snprintf(pos, 1, " ");
+                pos ++;
+            }
+        }
+
+        /* printable chars */
+        //printf("|");
+        ngx_snprintf(pos, 1, "|");
+        pos ++;
+        for (i = 0; i < blocksz ; ++i) {
+            l = (b * blocksz)  + i;
+            if (l >= src->len) {
+                finished = 1;
+                break;
+            }
+            if (isprint(src->data[l])) {
+                ngx_snprintf(pos, 1,
+                        "%c", src->data[l]);
+                //printf("%c", src->data[l]);
+            } else {
+                //printf(".");
+                ngx_snprintf(pos, 1, ".");
+            }
+            pos ++;
+        }
+
+        /* right pad */
+        for (; i < blocksz; ++i) {
+            //printf(" ");
+            ngx_snprintf(pos, 1, " ");
+            pos++;
+        }
+
+        /* end printable chars */
+        //printf("|\n");
+        ngx_snprintf(pos, 2, "|\n");
+        pos += 2;
+        if (finished) {
+            break;
+        }
+    }
+
+}

@@ -40,6 +40,10 @@ void
 ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
             ngx_http_variable_value_t *v, uintptr_t data);
 
+void
+ngx_http_json_log_set_variable_req_body_hexdump(ngx_http_request_t *r,
+        ngx_http_variable_value_t *v, uintptr_t data);
+
 ngx_int_t
 ngx_http_json_log_is_local_variable(ngx_str_t *name);
 
@@ -48,6 +52,7 @@ ngx_http_json_log_local_variable_needs_body_filter(ngx_str_t *name);
 
 ngx_int_t
 ngx_http_json_log_local_variable_needs_header_filter(ngx_str_t *name);
+
 
 
 #endif // __NGX_HTTP_JSON_LOG_VARIABLES_H__

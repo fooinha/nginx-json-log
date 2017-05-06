@@ -314,6 +314,12 @@ ngx_http_json_log_header_bad_request(ngx_http_request_t *r) {
     ngx_str_t                           lcname;
     ngx_http_variable_value_t           *vv;
     ngx_uint_t                          varkey;
+
+    ngx_str_t            name_hex = ngx_string("http_json_err_log_req_hexdump");
+    ngx_str_t                  lcname_hex;
+    ngx_http_variable_value_t  *vv_hex;
+    ngx_uint_t                 varkey_hex;
+
     ngx_str_t                           payload;
 
 #ifdef HTTP_JSON_LOG_KAFKA_ENABLED
@@ -351,11 +357,20 @@ ngx_http_json_log_header_bad_request(ngx_http_request_t *r) {
             lcname.len = name.len;
             lcname.data = ngx_pcalloc(r->pool, name.len);
             varkey = ngx_hash_strlow(lcname.data, name.data, name.len);
-
             vv = ngx_http_get_variable(r, &lcname, varkey);
             if (vv) {
                 ngx_http_json_log_set_variable_req_body(r,
                         vv, (uintptr_t) &payload);
+            }
+
+            lcname_hex.len = name_hex.len;
+            lcname_hex.data = ngx_pcalloc(r->pool, name_hex.len);
+            varkey_hex = ngx_hash_strlow(lcname_hex.data,
+                    name_hex.data, name_hex.len);
+            vv_hex = ngx_http_get_variable(r, &lcname_hex, varkey_hex);
+            if (vv_hex) {
+                ngx_http_json_log_set_variable_req_body_hexdump(r,
+                        vv_hex, (uintptr_t) &payload);
             }
         }
     }
@@ -570,11 +585,15 @@ static ngx_http_request_body_filter_pt  ngx_http_next_request_body_filter;
 static ngx_int_t
 ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
 
-
+    ngx_str_t                  name = ngx_string("http_json_log_req_body");
     ngx_str_t                  lcname;
     ngx_http_variable_value_t  *vv;
     ngx_uint_t                 varkey;
-    ngx_str_t                  name = ngx_string("http_json_log_req_body");
+
+    ngx_str_t           name_hex = ngx_string("http_json_log_req_body_hexdump");
+    ngx_str_t                  lcname_hex;
+    ngx_http_variable_value_t  *vv_hex;
+    ngx_uint_t                 varkey_hex;
 
     ngx_chain_t                *cl;
     size_t                     len = 0;
@@ -639,14 +658,21 @@ ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
     lcname.len = name.len;
     lcname.data = ngx_pcalloc(r->pool, name.len);
     varkey = ngx_hash_strlow(lcname.data, name.data, name.len);
-
     vv = ngx_http_get_variable(r, &lcname, varkey);
-
     if (!vv) {
         return ngx_http_next_header_filter(r);
     }
-
     ngx_http_json_log_set_variable_req_body(r, vv, (uintptr_t) &payload);
+
+    lcname_hex.len = name_hex.len;
+    lcname_hex.data = ngx_pcalloc(r->pool, name_hex.len);
+    varkey_hex = ngx_hash_strlow(lcname_hex.data, name_hex.data, name_hex.len);
+    vv_hex = ngx_http_get_variable(r, &lcname_hex, varkey_hex);
+    if (!vv_hex) {
+        return ngx_http_next_header_filter(r);
+    }
+    ngx_http_json_log_set_variable_req_body_hexdump(r, vv_hex, (uintptr_t) &payload);
+
     return ngx_http_next_request_body_filter(r, in);
 }
 

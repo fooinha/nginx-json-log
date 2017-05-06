@@ -47,4 +47,9 @@ ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst);
 ngx_uint_t
 ngx_json_log_str_split_count(ngx_str_t *value, u_char separator);
 
+size_t
+ngx_json_log_hexdump_length(size_t len, size_t blocksz);
+void
+ngx_json_log_hexdump(ngx_str_t *src, ngx_str_t *dst);
+
 #endif //__NGX_JSON_LOG_STR_H__

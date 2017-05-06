@@ -214,14 +214,50 @@ ngx_stream_json_log_preread_payload_variable(ngx_stream_session_t *s,
     return NGX_OK;
 }
 
+//FIXME
+//static ngx_int_t
+//ngx_stream_json_log_preread_payload_hex_variable(ngx_stream_session_t *s,
+//    ngx_variable_value_t *v, uintptr_t data)
+//{
+//    ngx_stream_json_log_preread_ctx_t  *ctx;
+//    size_t                              len;
+//    ngx_str_t                           payload;
+//
+//    ctx = ngx_stream_get_module_ctx(s, ngx_stream_json_log_preread_module);
+//
+//    if (ctx == NULL) {
+//        v->not_found = 1;
+//        return NGX_OK;
+//    }
+//
+//    len = ctx->last-ctx->pos;
+//
+//    if (ctx->payload.data == NULL && len) {
+//        //FIXME
+//    }
+//
+//    v->valid = 1;
+//    v->no_cacheable = 0;
+//    v->not_found = 0;
+//
+//    return NGX_OK;
+//}
+
 static ngx_int_t
 ngx_stream_json_log_preread_add_variables(ngx_conf_t *cf)
 {
     ngx_stream_variable_t *var;
     ngx_str_t              payload = ngx_string("ngx_stream_json_log_payload");
 
+//    ngx_stream_variable_t *var_hex;
+//    ngx_str_t              payload_hex =
+//        ngx_string("ngx_stream_json_log_payload_hexdump");
+
     var = ngx_stream_add_variable(cf, &payload, 0);
     var->get_handler = ngx_stream_json_log_preread_payload_variable;
+
+//    var_hex = ngx_stream_add_variable(cf, &payload_hex, 0);
+//    var_hex->get_handler = ngx_stream_json_log_preread_payload_hex_variable;
 
     return NGX_OK;
 }
