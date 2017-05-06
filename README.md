@@ -431,6 +431,21 @@ Example:
         "body": "Zm9v"
     }
 ```
+
+#### $http_json_log_req_body_hexdump;
+
+Log request body encoded as hexdump array.
+It requires proxy_pass configuration at logging location.
+
+Example:
+
+```
+    "hex": [
+        "31 32 33 34 35 36 37 38 39  41 42 43 44 45 46 30 |123456789ABCDEF0|",
+        "31 32 33 34 35 36 .. .. ..  .. .. .. .. .. .. .. |123456          |"
+    ]
+```
+
 #### $http_json_log_resp_headers;
 
 Creates a json object with available response headers.
