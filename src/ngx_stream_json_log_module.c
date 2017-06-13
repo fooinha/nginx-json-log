@@ -31,7 +31,7 @@
 #include "ngx_json_log_text.h"
 #include "ngx_json_log_output.h"
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
 /* global variable to indicate the we have kafka locations*/
 static ngx_int_t   stream_json_log_has_kafka_locations     = NGX_CONF_UNSET;
 #endif
@@ -69,7 +69,7 @@ static ngx_command_t ngx_stream_json_log_commands[] = {
         0,
         NULL
     },
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     /* KAFKA */
     {
         ngx_string("json_log_kafka_client_id"),
@@ -176,7 +176,7 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
     ngx_json_log_output_location_t     *arr;
     ngx_json_log_output_location_t     *location;
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     ngx_stream_json_log_main_conf_t     *mcf;
     int                                 err;
 
@@ -242,7 +242,7 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
             continue;
         }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
         /* Write to kafka */
         if (location->type == NGX_JSON_LOG_SINK_KAFKA) {
 
@@ -320,7 +320,7 @@ ngx_stream_json_log_create_main_conf(ngx_conf_t *cf) {
         return NULL;
     }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     if (ngx_json_log_init_kafka(cf->pool, &conf->kafka) != NGX_OK) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "http_json_log: error initialize kafka conf");
@@ -424,7 +424,7 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         new_location = ngx_array_push(lc->locations);
         new_location->type = NGX_JSON_LOG_SINK_FILE;
         prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     }
     else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
         new_location = ngx_array_push(lc->locations);
@@ -455,7 +455,7 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
                 &new_location->location);
     }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     /* If sink type is kafka, then set topic config for this location */
     if (new_location->type == NGX_JSON_LOG_SINK_KAFKA) {
 
@@ -504,7 +504,7 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 static ngx_int_t
 ngx_stream_json_log_init_worker(ngx_cycle_t *cycle) {
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     ngx_stream_json_log_main_conf_t  *conf =
         ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_json_log_module);
 

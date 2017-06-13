@@ -25,11 +25,13 @@
  */
 #ifndef __NGX_JSON_LOG_KAFKA_H__
 #define __NGX_JSON_LOG_KAFKA_H__
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
 
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <ngx_stream.h>
+
+#if (NGX_HAVE_LIBRDKAFKA)
+
 #include <librdkafka/rdkafka.h>
 
 struct ngx_json_log_kafka_conf_s {
@@ -82,5 +84,5 @@ ngx_int_t
 ngx_json_log_configure_kafka(ngx_pool_t *pool,
         ngx_json_log_main_kafka_conf_t *conf);
 
-#endif// HTTP_JSON_LOG_KAFKA_ENABLED
+#endif// (NGX_HAVE_LIBRDKAFKA)
 #endif// __NGX_LOG_JSON_KAFKA_H__

@@ -29,13 +29,13 @@
 
 #include <ngx_core.h>
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
 #include "ngx_json_log_kafka.h"
 #endif
 
 struct ngx_stream_json_log_main_conf_s {
     ngx_array_t                               *formats;
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     ngx_json_log_main_kafka_conf_t  kafka;
 #endif
 };

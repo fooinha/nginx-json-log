@@ -23,7 +23,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+
+#include <ngx_core.h>
+
+#if (NGX_HAVE_LIBRDKAFKA)
+
 #include <ngx_json_log_kafka.h>
 #include <ngx_json_log_str.h>
 
@@ -333,4 +337,4 @@ ngx_json_log_kafka_topic_disable_ack(ngx_pool_t *pool,
     ngx_json_log_kafka_topic_conf_set_str(pool, rktc,
             conf_req_required_acks_key, &conf_zero_value);
 }
-#endif// HTTP_JSON_LOG_KAFKA_ENABLED
+#endif// (NGX_HAVE_LIBRDKAFKA)
