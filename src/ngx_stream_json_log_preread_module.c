@@ -127,6 +127,7 @@ ngx_stream_json_log_preread_handler(ngx_stream_session_t *s)
     return NGX_OK;
 }
 
+
 static void *
 ngx_stream_json_log_preread_create_srv_conf(ngx_conf_t *cf)
 {
@@ -142,6 +143,7 @@ ngx_stream_json_log_preread_create_srv_conf(ngx_conf_t *cf)
 
     return conf;
 }
+
 
 static char *
 ngx_stream_json_log_preread_merge_srv_conf(ngx_conf_t *cf, void *parent,
@@ -173,6 +175,7 @@ ngx_stream_json_log_preread_init(ngx_conf_t *cf)
 
     return NGX_OK;
 }
+
 
 static ngx_int_t
 ngx_stream_json_log_preread_payload_variable(ngx_stream_session_t *s,
@@ -214,6 +217,7 @@ ngx_stream_json_log_preread_payload_variable(ngx_stream_session_t *s,
     return NGX_OK;
 }
 
+
 //FIXME
 //static ngx_int_t
 //ngx_stream_json_log_preread_payload_hex_variable(ngx_stream_session_t *s,
@@ -242,6 +246,7 @@ ngx_stream_json_log_preread_payload_variable(ngx_stream_session_t *s,
 //
 //    return NGX_OK;
 //}
+
 
 static ngx_int_t
 ngx_stream_json_log_preread_add_variables(ngx_conf_t *cf)

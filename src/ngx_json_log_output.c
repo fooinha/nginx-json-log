@@ -2,8 +2,8 @@
 
 ngx_int_t
 ngx_json_log_write_sink_file(ngx_log_t *log,
-        ngx_fd_t fd, const char *txt) {
-
+        ngx_fd_t fd, const char *txt)
+{
     size_t written = 0, len = 0;
     if (!txt) {
         return NGX_ERROR;

@@ -78,23 +78,28 @@ typedef struct ngx_json_log_value_s       ngx_json_log_value_t;
 /* memory pool for json objects */
 static ngx_pool_t * current_pool;
 
+
 /* Helper functions for allocate/free from memory pool for libjsasson. */
 void
-set_current_mem_pool(ngx_pool_t *pool) {
+set_current_mem_pool(ngx_pool_t *pool)
+{
     current_pool = pool;
 }
 
+
 static ngx_pool_t *
-get_current_mem_pool() {
+get_current_mem_pool()
+{
     return current_pool;
 }
+
 
 ngx_int_t
 ngx_json_log_output_cxt_new(
         ngx_pool_t *pool,
         ngx_json_log_output_cxt_t * ctx,
-        ngx_uint_t items_len) {
-
+        ngx_uint_t items_len)
+{
     set_current_mem_pool(pool);
 
     ctx->root = json_object();
@@ -114,7 +119,8 @@ ngx_json_log_output_cxt_new(
 
 
 /* allocated json data in memory pool */
-static void * ngx_json_log_malloc(size_t size) {
+static void * ngx_json_log_malloc(size_t size)
+{
 
     ngx_pool_t *pool = get_current_mem_pool();
     if (!pool) {
@@ -128,9 +134,10 @@ static void * ngx_json_log_malloc(size_t size) {
     return mem;
 }
 
-/* free json data memory from pool */
-static void ngx_json_log_free(void *p) {
 
+/* free json data memory from pool */
+static void ngx_json_log_free(void *p)
+{
     ngx_pool_t *pool = get_current_mem_pool();
     if (!pool) {
         return;
@@ -138,18 +145,20 @@ static void ngx_json_log_free(void *p) {
     ngx_pfree(pool, p);
 }
 
-void ngx_json_log_set_alloc_funcs() {
+
+void ngx_json_log_set_alloc_funcs()
+{
     json_set_alloc_funcs(ngx_json_log_malloc, ngx_json_log_free);
 }
 
-/* output algorithm */
-/* Find the place to put the new item */
 
+/* output algorithm */
+/* find the place to put the new item */
 /* finds the saved parent for a item name */
 static ngx_json_log_value_t *
 ngx_json_log_find_saved_parent(ngx_pool_t *pool,
-        ngx_array_t *arr_items, ngx_str_t *name, size_t len) {
-
+        ngx_array_t *arr_items, ngx_str_t *name, size_t len)
+{
     ngx_json_log_value_t *rec = arr_items->elts;
     size_t j;
 
@@ -163,10 +172,11 @@ ngx_json_log_find_saved_parent(ngx_pool_t *pool,
     return NULL;
 }
 
+
 /* creates a string from last label from path */
 static const char *
-ngx_json_log_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
-
+ngx_json_log_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max)
+{
     u_char *copy = NULL;
     int l = ngx_min(path->len, max);
     int start= l - 1;
@@ -196,10 +206,11 @@ ngx_json_log_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max) {
     return (const char *) copy;
 }
 
+
 /* helper function to find next item level position in path*/
 static u_char *
-ngx_json_log_has_label_pos(u_char *path) {
-
+ngx_json_log_has_label_pos(u_char *path)
+{
     u_char * ptr = NULL;
 
     if (!path)
@@ -212,8 +223,8 @@ ngx_json_log_has_label_pos(u_char *path) {
 
 static json_t *
 ngx_json_log_find_parent(ngx_pool_t *pool, ngx_array_t *arr_items,
-        json_t *parent, ngx_str_t *path) {
-
+        json_t *parent, ngx_str_t *path)
+{
     json_t * p = parent;
     ngx_json_log_value_t *level = NULL;
     u_char * pos = &path->data[0];
@@ -222,7 +233,6 @@ ngx_json_log_find_parent(ngx_pool_t *pool, ngx_array_t *arr_items,
 
     if (!path || !path->data || !path->len)
         return parent;
-
 
     while((pos = ngx_json_log_has_label_pos(pos)) !=NULL) {
         len = pos-path->data;
@@ -272,11 +282,12 @@ ngx_json_log_find_parent(ngx_pool_t *pool, ngx_array_t *arr_items,
     return p;
 }
 
+
 /* adds a typed json node to a parent node */
 static void ngx_json_log_add_json_node( json_t *base,
         int is_array, json_type type, const char *key,
-        ngx_str_t *value) {
-
+        ngx_str_t *value)
+{
     ngx_pool_t *pool = current_pool;
     json_t * parent = base;
     json_t * parent_array = NULL;
@@ -321,7 +332,6 @@ static void ngx_json_log_add_json_node( json_t *base,
         node = json_stringn((const char *)value->data, value->len);
     }
 
-
     if (node) {
         if (! is_array) {
             json_object_set(parent, key, node);
@@ -331,12 +341,13 @@ static void ngx_json_log_add_json_node( json_t *base,
     }
 }
 
+
 ngx_int_t
 ngx_json_log_output_add_item(
         ngx_json_log_module_type_e type, void *rs,
         ngx_json_log_output_cxt_t *output_ctx,
-        ngx_json_log_item_t *item) {
-
+        ngx_json_log_item_t *item)
+{
     ngx_str_t                   value;
     uint32_t                    levels = 0;
     json_t                      *parent = output_ctx->root;
@@ -418,11 +429,12 @@ ngx_json_log_output_add_item(
     return NGX_OK;
 }
 
-/* Dumps to text format the JSON for the items for this request. */
+
+/* dumps to text format the JSON for the items for this request. */
 char *
 ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
-        ngx_array_t *items) {
-
+        ngx_array_t *items)
+{
     ngx_json_log_output_cxt_t     ctx;
     ngx_json_log_item_t           *item;
     size_t                        i, dump_len;
@@ -468,7 +480,6 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
         return NULL;
     }
 
-
     if (type == NGX_JSON_LOG_HTTP) {
         txt = ngx_pcalloc(r->pool, dump_len + 2);
     }
@@ -485,10 +496,11 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
     return txt;
 }
 
-/* Compares two items by name */
-ngx_int_t
-ngx_json_log_items_cmp(const void *left, const void *right) {
 
+/* compares two items by name */
+ngx_int_t
+ngx_json_log_items_cmp(const void *left, const void *right)
+{
     const ngx_json_log_item_t * l = left;
     const ngx_json_log_item_t * r = right;
 
@@ -496,11 +508,12 @@ ngx_json_log_items_cmp(const void *left, const void *right) {
             ngx_min(l->name->len, r->name->len));
 }
 
-/* Reads and parses, format from configuration */
+
+/* reads and parses, format from configuration */
 static ngx_int_t
 ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
-        ngx_json_log_format_t *format) {
-
+        ngx_json_log_format_t *format)
+{
 /* This requires PCRE */
 #if (NGX_PCRE)
     u_char                              errstr[NGX_MAX_CONF_ERRSTR];
@@ -710,7 +723,6 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
             }
         }
 
-
         /* adjust pointers and size for reading the next item*/
         spec.data += offset;
         spec.len -= offset;
@@ -726,9 +738,11 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
     return NGX_OK;
 }
 
+
 char *
 ngx_http_json_log_main_format_block(ngx_conf_t *cf,
-        ngx_command_t *cmd, void *conf) {
+        ngx_command_t *cmd, void *conf)
+{
 
     ngx_str_t                            *args;
     ngx_json_log_format_t                *new_format;
@@ -806,8 +820,8 @@ ngx_http_json_log_main_format_block(ngx_conf_t *cf,
 #if nginx_version >= 1011002
 char *
 ngx_stream_json_log_main_format_block(ngx_conf_t *cf,
-        ngx_command_t *cmd, void *conf) {
-
+        ngx_command_t *cmd, void *conf)
+{
     ngx_str_t                            *args;
     ngx_json_log_format_t                *new_format;
     ngx_stream_json_log_main_conf_t      *mcf = conf;

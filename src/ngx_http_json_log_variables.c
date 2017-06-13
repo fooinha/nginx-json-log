@@ -83,9 +83,10 @@ static ngx_http_variable_t  ngx_http_json_log_variables_list[] = {
         }
 };
 
-ngx_http_variable_t *
-ngx_http_json_log_variables(size_t *len) {
 
+ngx_http_variable_t *
+ngx_http_json_log_variables(size_t *len)
+{
     *len =
       sizeof(ngx_http_json_log_variables_list)
       / sizeof(ngx_http_variable_t);
@@ -93,9 +94,10 @@ ngx_http_json_log_variables(size_t *len) {
     return ngx_http_json_log_variables_list;
 }
 
-ngx_int_t
-ngx_http_json_log_is_local_variable(ngx_str_t *name) {
 
+ngx_int_t
+ngx_http_json_log_is_local_variable(ngx_str_t *name)
+{
     size_t len = 0, i = 0;
     ngx_http_variable_t * vars;
 
@@ -113,8 +115,10 @@ ngx_http_json_log_is_local_variable(ngx_str_t *name) {
     return 0;
 }
 
+
 ngx_int_t
-ngx_http_json_log_local_variable_needs_body_filter(ngx_str_t *name) {
+ngx_http_json_log_local_variable_needs_body_filter(ngx_str_t *name)
+{
     if (!name || !name->data || !name->len) {
         return 0;
     }
@@ -130,9 +134,10 @@ ngx_http_json_log_local_variable_needs_body_filter(ngx_str_t *name) {
     return NGX_ERROR;
 }
 
-ngx_int_t
-ngx_http_json_log_local_variable_needs_header_filter(ngx_str_t *name) {
 
+ngx_int_t
+ngx_http_json_log_local_variable_needs_header_filter(ngx_str_t *name)
+{
     if (!name || !name->data || !name->len) {
         return 0;
     }
@@ -144,9 +149,10 @@ ngx_http_json_log_local_variable_needs_header_filter(ngx_str_t *name) {
     return 0;
 }
 
-void
-ngx_http_json_log_register_variables(ngx_conf_t *cf) {
 
+void
+ngx_http_json_log_register_variables(ngx_conf_t *cf)
+{
     ngx_http_variable_t          *v;
     ngx_http_variable_t          *local_vars = NULL;
     size_t                        l = 0;
@@ -164,10 +170,11 @@ ngx_http_json_log_register_variables(ngx_conf_t *cf) {
     }
 }
 
+
 static ngx_int_t
 ngx_http_json_log_get_variable_req_headers(ngx_http_request_t *r,
-            ngx_http_variable_value_t *v, uintptr_t data) {
-
+        ngx_http_variable_value_t *v, uintptr_t data)
+{
     ngx_uint_t                    i;
     ngx_list_part_t              *part = &r->headers_in.headers.part;
     ngx_table_elt_t              *header = part->elts;
@@ -192,10 +199,11 @@ ngx_http_json_log_get_variable_req_headers(ngx_http_request_t *r,
     return NGX_OK;
 }
 
+
 void
 ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
-            ngx_http_variable_value_t *v, uintptr_t data) {
-
+            ngx_http_variable_value_t *v, uintptr_t data)
+{
     size_t                        i;
     ngx_table_elt_t              *header;
     ngx_array_t                  *headers = (ngx_array_t *) data;
@@ -240,10 +248,11 @@ ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
     set_current_mem_pool(NULL);
 }
 
+
 void
 ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
-        ngx_http_variable_value_t *v, uintptr_t data) {
-
+        ngx_http_variable_value_t *v, uintptr_t data)
+{
     ngx_str_t                          base64;
     json_t                            *object = NULL;
     ngx_str_t                         *payload = (ngx_str_t *) data;
@@ -281,10 +290,11 @@ ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
     set_current_mem_pool(NULL);
 }
 
+
 void
 ngx_http_json_log_set_variable_req_body_hexdump(ngx_http_request_t *r,
-        ngx_http_variable_value_t *v, uintptr_t data) {
-
+        ngx_http_variable_value_t *v, uintptr_t data)
+{
     ngx_str_t                          hexdump;
     json_t                            *object = NULL;
     json_t                            *value = NULL;
