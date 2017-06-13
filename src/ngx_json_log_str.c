@@ -25,10 +25,11 @@
  */
 #include <ngx_json_log_str.h>
 
+
 /* duplicates and set as null terminated */
 u_char *
-ngx_json_log_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
-
+ngx_json_log_str_dup(ngx_pool_t *pool, ngx_str_t *src)
+{
     u_char  *dst;
 
     dst = ngx_pcalloc(pool, src->len + 1);
@@ -40,10 +41,11 @@ ngx_json_log_str_dup(ngx_pool_t *pool, ngx_str_t *src) {
     return dst;
 }
 
+
 ngx_str_t *
 ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
-        ngx_str_t *src, size_t len) {
-
+        ngx_str_t *src, size_t len)
+{
     ngx_str_t *str = ngx_pcalloc(pool, sizeof(ngx_str_t));
     if (str == NULL) {
         return NULL;
@@ -60,9 +62,10 @@ ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
     return str;
 }
 
-const char *
-ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len) {
 
+const char *
+ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len)
+{
     char *dst;
 
     dst = ngx_pcalloc(pool, len + 1);
@@ -74,9 +77,10 @@ ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len) {
     return dst;
 }
 
-u_char *
-ngx_json_log_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
 
+u_char *
+ngx_json_log_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len)
+{
     u_char  *dst;
     size_t l = ngx_min(src->len, len);
 
@@ -89,9 +93,10 @@ ngx_json_log_str_dup_len(ngx_pool_t *pool, ngx_str_t *src, size_t len) {
     return dst;
 }
 
-ngx_int_t
-ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
 
+ngx_int_t
+ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst)
+{
     if (! src) {
         return NGX_ERROR;
     }
@@ -106,12 +111,13 @@ ngx_json_log_str_clone(ngx_pool_t *pool, ngx_str_t *src, ngx_str_t *dst) {
     return NGX_OK;
 }
 
+
 /* counts the number of items found in str `value` separated
  * by given `separator`.
  */
 ngx_uint_t
-ngx_json_log_str_split_count(ngx_str_t *value, u_char separator) {
-
+ngx_json_log_str_split_count(ngx_str_t *value, u_char separator)
+{
     ngx_uint_t ret = 0;
     u_char has = 0;
     size_t i;
@@ -133,8 +139,10 @@ ngx_json_log_str_split_count(ngx_str_t *value, u_char separator) {
     return ret;
 }
 
+
 size_t
-ngx_json_log_hexdump_length(size_t len, size_t blocksz) {
+ngx_json_log_hexdump_length(size_t len, size_t blocksz)
+{
     size_t                   sz = 0;
     if (!len) {
         return sz;
@@ -154,8 +162,10 @@ ngx_json_log_hexdump_length(size_t len, size_t blocksz) {
     return sz;
 }
 
+
 void
-ngx_json_log_hexdump(ngx_str_t *src, ngx_str_t *dst) {
+ngx_json_log_hexdump(ngx_str_t *src, ngx_str_t *dst)
+{
     static const size_t            blocksz = 16;
     size_t                         b, i, l;
     unsigned char                 *pos;

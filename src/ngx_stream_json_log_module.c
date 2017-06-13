@@ -165,10 +165,11 @@ ngx_module_t  ngx_stream_json_log_module = {
     NGX_MODULE_V1_PADDING
 };
 
+
 /* log handler - format and print */
 static ngx_int_t
-ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
-
+ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
+{
     ngx_stream_json_log_srv_conf_t      *lc;
     ngx_str_t                           filter_val;
     char                                *txt;
@@ -310,9 +311,10 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s) {
     return NGX_OK;
 }
 
-static void *
-ngx_stream_json_log_create_main_conf(ngx_conf_t *cf) {
 
+static void *
+ngx_stream_json_log_create_main_conf(ngx_conf_t *cf)
+{
     ngx_stream_json_log_main_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_json_log_main_conf_t));
@@ -334,9 +336,10 @@ ngx_stream_json_log_create_main_conf(ngx_conf_t *cf) {
     return conf;
 }
 
-static void *
-ngx_stream_json_log_create_srv_conf(ngx_conf_t *cf) {
 
+static void *
+ngx_stream_json_log_create_srv_conf(ngx_conf_t *cf)
+{
     ngx_stream_json_log_srv_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_json_log_srv_conf_t));
@@ -351,9 +354,10 @@ ngx_stream_json_log_create_srv_conf(ngx_conf_t *cf) {
     return conf;
 }
 
-static ngx_int_t
-ngx_stream_json_log_post_conf(ngx_conf_t *cf) {
 
+static ngx_int_t
+ngx_stream_json_log_post_conf(ngx_conf_t *cf)
+{
     ngx_stream_handler_pt        *h;
     ngx_stream_core_main_conf_t  *cmcf;
 
@@ -371,9 +375,10 @@ ngx_stream_json_log_post_conf(ngx_conf_t *cf) {
     return NGX_OK;
 }
 
-static char *
-ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
+static char *
+ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
     ngx_stream_json_log_srv_conf_t       *lc = conf;
     ngx_stream_json_log_main_conf_t      *mcf = NULL;
     ngx_json_log_output_location_t       *new_location = NULL;
@@ -500,22 +505,22 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     return NGX_CONF_OK;
 }
 
-/* Initialized stuff per http_json_log worker.*/
-static ngx_int_t
-ngx_stream_json_log_init_worker(ngx_cycle_t *cycle) {
 
+/* initialized stuff per http_json_log worker.*/
+static ngx_int_t
+ngx_stream_json_log_init_worker(ngx_cycle_t *cycle)
+{
 #if (NGX_HAVE_LIBRDKAFKA)
     ngx_stream_json_log_main_conf_t  *conf =
         ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_json_log_module);
 
-    /* From this point we just are init kafka stuff */
+    /* from this point we just are init kafka stuff */
     if (stream_json_log_has_kafka_locations == NGX_CONF_UNSET ) {
         return NGX_OK;
     }
 
     ngx_json_log_configure_kafka(cycle->pool, &conf->kafka);
 #endif
-
     return NGX_OK;
 }
 

@@ -226,43 +226,54 @@ static ngx_int_t   http_json_log_needs_err_resp_headers_filter = NGX_CONF_UNSET;
 
 
 ngx_int_t
-ngx_http_json_log_needs_body_filter() {
+ngx_http_json_log_needs_body_filter()
+{
     return http_json_log_needs_req_body_filter != NGX_CONF_UNSET;
 }
 
+
 void
-ngx_http_json_log_set_needs_body_filter() {
+ngx_http_json_log_set_needs_body_filter()
+{
     http_json_log_needs_req_body_filter = 1;
 }
 
+
 ngx_int_t
-ngx_http_json_log_needs_header_filter() {
+ngx_http_json_log_needs_header_filter()
+{
     return http_json_log_needs_resp_headers_filter != NGX_CONF_UNSET;
 }
 
+
 void
-ngx_http_json_log_set_needs_header_filter() {
+ngx_http_json_log_set_needs_header_filter()
+{
     http_json_log_needs_resp_headers_filter = 1;
 }
 
+
 ngx_int_t
-ngx_http_json_log_needs_err_header_filter() {
+ngx_http_json_log_needs_err_header_filter()
+{
     return http_json_log_needs_err_resp_headers_filter != NGX_CONF_UNSET;
 }
 
+
 void
-ngx_http_json_log_set_needs_err_header_filter() {
+ngx_http_json_log_set_needs_err_header_filter()
+{
     http_json_log_needs_err_resp_headers_filter = 1;
 }
 
+
 static char *
 ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
-        ngx_command_t *cmd, void *conf) {
-
+        ngx_command_t *cmd, void *conf)
+{
     ngx_http_json_log_filter_loc_conf_t  *lc = conf;
     ngx_str_t                            *args = cf->args->elts;
     size_t                               sp = NGX_ERROR;
-
 
     if (! args) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -289,7 +300,8 @@ ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
 
 
 static size_t
-ngx_http_json_log_get_req_body_limit(ngx_http_request_t *r) {
+ngx_http_json_log_get_req_body_limit(ngx_http_request_t *r)
+{
     ngx_http_json_log_filter_loc_conf_t        *lc;
 
     lc = ngx_http_get_module_loc_conf(r, ngx_http_json_log_filter_module);
@@ -300,9 +312,10 @@ ngx_http_json_log_get_req_body_limit(ngx_http_request_t *r) {
     return lc->req_body_limit;
 }
 
-static void
-ngx_http_json_log_header_bad_request(ngx_http_request_t *r) {
 
+static void
+ngx_http_json_log_header_bad_request(ngx_http_request_t *r)
+{
     ngx_http_json_log_srv_conf_t            *lc;
     ngx_str_t                               filter_val;
     char                                    *txt;
@@ -502,10 +515,13 @@ ngx_http_json_log_header_bad_request(ngx_http_request_t *r) {
     } // for server
 }
 
-static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
-static ngx_int_t
-ngx_http_json_log_header_filter(ngx_http_request_t *r) {
 
+static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+
+
+static ngx_int_t
+ngx_http_json_log_header_filter(ngx_http_request_t *r)
+{
     ngx_uint_t                          i;
     ngx_list_part_t                     *part = &r->headers_out.headers.part;
     ngx_table_elt_t                     *header = part->elts;
@@ -579,12 +595,14 @@ ngx_http_json_log_header_filter(ngx_http_request_t *r) {
     return ngx_http_next_header_filter(r);
 }
 
+
 static ngx_http_request_body_filter_pt  ngx_http_next_request_body_filter;
+
 
 /* save body filter */
 static ngx_int_t
-ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
-
+ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
+{
     ngx_str_t                  name = ngx_string("http_json_log_req_body");
     ngx_str_t                  lcname;
     ngx_http_variable_value_t  *vv;
@@ -676,9 +694,10 @@ ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
     return ngx_http_next_request_body_filter(r, in);
 }
 
-static ngx_int_t
-ngx_http_json_log_filter_init(ngx_conf_t *cf) {
 
+static ngx_int_t
+ngx_http_json_log_filter_init(ngx_conf_t *cf)
+{
     if (ngx_http_json_log_needs_body_filter()) {
         ngx_http_next_request_body_filter = ngx_http_top_request_body_filter;
         ngx_http_top_request_body_filter = ngx_http_json_log_body_filter;
@@ -692,9 +711,10 @@ ngx_http_json_log_filter_init(ngx_conf_t *cf) {
     return NGX_OK;
 }
 
-static void *
-ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf) {
 
+static void *
+ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf)
+{
     ngx_http_json_log_filter_main_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_filter_main_conf_t));
@@ -716,9 +736,10 @@ ngx_http_json_log_filter_create_main_conf(ngx_conf_t *cf) {
     return conf;
 }
 
-static void *
-ngx_http_json_log_filter_create_srv_conf(ngx_conf_t *cf) {
 
+static void *
+ngx_http_json_log_filter_create_srv_conf(ngx_conf_t *cf)
+{
     ngx_http_json_log_srv_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_srv_conf_t));
@@ -730,13 +751,13 @@ ngx_http_json_log_filter_create_srv_conf(ngx_conf_t *cf) {
     conf->locations = ngx_array_create(cf->pool, 1,
             sizeof(ngx_json_log_output_location_t));
 
-
     return conf;
 }
 
-static void *
-ngx_http_json_log_filter_create_loc_conf(ngx_conf_t *cf) {
 
+static void *
+ngx_http_json_log_filter_create_loc_conf(ngx_conf_t *cf)
+{
     ngx_http_json_log_filter_loc_conf_t  *conf;
 
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_json_log_filter_loc_conf_t));
@@ -749,6 +770,7 @@ ngx_http_json_log_filter_create_loc_conf(ngx_conf_t *cf) {
     return conf;
 }
 
+
 /* Register the output location for the HTTP server config
  * `json_log`
  *
@@ -758,8 +780,8 @@ ngx_http_json_log_filter_create_loc_conf(ngx_conf_t *cf) {
  * kafka:  -> kafka topic
  */
 static char *
-ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-
+ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
     ngx_http_json_log_srv_conf_t         *lc = conf;
     ngx_http_json_log_main_conf_t        *mcf;
     ngx_json_log_output_location_t       *new_location = NULL;
@@ -888,10 +910,11 @@ ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     return NGX_CONF_OK;
 }
 
+
 /* Initialized stuff per http_json_log worker.*/
 static ngx_int_t
-ngx_http_json_log_filter_init_worker(ngx_cycle_t *cycle) {
-
+ngx_http_json_log_filter_init_worker(ngx_cycle_t *cycle)
+{
 #if (NGX_HAVE_LIBRDKAFKA)
     ngx_int_t rc = NGX_OK;
     ngx_http_json_log_filter_main_conf_t  *conf =
