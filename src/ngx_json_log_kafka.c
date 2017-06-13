@@ -31,6 +31,8 @@
 #include <ngx_json_log_kafka.h>
 #include <ngx_json_log_str.h>
 
+#define NGX_JSON_LOG_KAFKA_ERROR_MSG_LEN (2048)
+
 /* kafka configuration */
 rd_kafka_topic_conf_t *
 ngx_json_log_kafka_topic_conf_new(ngx_pool_t *pool) {
@@ -57,69 +59,95 @@ ngx_json_log_kafka_conf_new(ngx_pool_t *pool)
 
 
 /* set an integer config value */
-rd_kafka_conf_res_t
-ngx_json_log_kafka_conf_set_int(ngx_pool_t *pool, rd_kafka_conf_t *conf, const char * key, intmax_t value)
+ngx_int_t
+ngx_json_log_kafka_conf_set_int(ngx_pool_t *pool,
+    rd_kafka_conf_t *conf, const char * key, intmax_t value)
 {
-    char buf[21] = {0};
-    char errstr[2048]  = {0};
+    char buf[NGX_INT64_LEN + 1];
+    char errstr[NGX_JSON_LOG_KAFKA_ERROR_MSG_LEN];
     uint32_t errstr_sz = sizeof(errstr);
+    rd_kafka_conf_res_t ret;
 
-    snprintf(buf, 21, "%lu", value);
-    rd_kafka_conf_res_t ret = rd_kafka_conf_set(conf, key, buf, errstr, errstr_sz);
+    snprintf(buf, NGX_INT64_LEN, "%lu", value);
+    ret = rd_kafka_conf_set(conf, key, buf, errstr, errstr_sz);
     if (ret != RD_KAFKA_CONF_OK) {
         ngx_log_error(NGX_LOG_WARN, pool->log, 0,
-                "json_log: Failed to set kafka conf [%s] => [%s] : %s", key, buf, errstr);
+                "json_log: failed to set kafka conf [%s] => [%s] : %s",
+                key, buf, errstr);
+        return NGX_ERROR;
     }
-    return ret;
+    return NGX_OK;
 }
 
 
 /* set a string config value */
-rd_kafka_conf_res_t
-ngx_json_log_kafka_conf_set_str(ngx_pool_t *pool, rd_kafka_conf_t *conf, const char * key, ngx_str_t *str)
+ngx_int_t
+ngx_json_log_kafka_conf_set_str(ngx_pool_t *pool, rd_kafka_conf_t *conf,
+    const char * key, ngx_str_t *str)
 {
-    char errstr[2048]  = {0};
+    char errstr[NGX_JSON_LOG_KAFKA_ERROR_MSG_LEN];
     uint32_t errstr_sz = sizeof(errstr);
+    rd_kafka_conf_res_t ret;
 
     u_char *value = ngx_json_log_str_dup(pool, str);
+    if (!value) {
+        ngx_log_error(NGX_LOG_WARN, pool->log, 0,
+                "json_log: failed to set kafka conf [%s] : %s",
+                key, errstr);
+        return NGX_ERROR;
+    }
 
-    rd_kafka_conf_res_t ret = rd_kafka_conf_set(conf, key, (const char *) value, errstr, errstr_sz);
+    ret = rd_kafka_conf_set(conf, key, (const char *) value, errstr, errstr_sz);
     if(ret != RD_KAFKA_CONF_OK) {
         ngx_log_error(NGX_LOG_WARN, pool->log, 0,
-                "json_log: Failed to set kafka conf [%s] => [%s] : %s", key,(const char *) value, errstr);
+                "json_log: failed to set kafka conf [%s] => [%s] : %s",
+                key,(const char *) value, errstr);
+        return NGX_ERROR;
     }
-    return ret;
+    return NGX_OK;
 }
 
 
-rd_kafka_conf_res_t ngx_json_log_kafka_topic_conf_set_str(ngx_pool_t *pool, rd_kafka_topic_conf_t *topic_conf, const char *key, ngx_str_t *str)
+ngx_int_t
+ngx_json_log_kafka_topic_conf_set_str(ngx_pool_t *pool,
+    rd_kafka_topic_conf_t *topic_conf, const char *key, ngx_str_t *str)
 {
-    char errstr[2048]  = {0};
+    char errstr[NGX_JSON_LOG_KAFKA_ERROR_MSG_LEN];
     uint32_t errstr_sz = sizeof(errstr);
+    rd_kafka_conf_res_t ret;
 
     u_char *value = ngx_json_log_str_dup(pool, str);
+    if (!value) {
+        ngx_log_error(NGX_LOG_WARN, pool->log, 0,
+                "json_log: failed to set kafka topic conf [%s] : %s",
+                key, errstr);
+        return NGX_ERROR;
+    }
 
-    rd_kafka_conf_res_t ret = rd_kafka_topic_conf_set(topic_conf, key, (const char *) value, errstr, errstr_sz);
+    ret = rd_kafka_topic_conf_set(topic_conf,
+            key, (const char *) value, errstr, errstr_sz);
     if(ret != RD_KAFKA_CONF_OK) {
         ngx_log_error(NGX_LOG_WARN, pool->log, 0,
-                "json_log: Failed to set kafka topic conf [%s] => [%s] : %s", key,(const char *) value, errstr);
+                "json_log: failed to set kafka topic conf [%s] => [%s] : %s",
+                key,(const char *) value, errstr);
+        return NGX_ERROR;
     }
-    return ret;
-
+    return NGX_OK;
 }
 
 
 /* create a kafka handler for producing messages */
-rd_kafka_t*
-ngx_json_log_kafka_producer_new(ngx_pool_t *pool, rd_kafka_conf_t * conf)
+rd_kafka_t *
+ngx_json_log_kafka_producer_new(ngx_pool_t *pool, rd_kafka_conf_t *conf)
 {
     rd_kafka_t *rk                    = NULL;
-    char errstr[2048]  = {0};
+    char errstr[NGX_JSON_LOG_KAFKA_ERROR_MSG_LEN];
+    uint32_t errstr_sz = sizeof(errstr);
 
     /* Create Kafka handle */
-    if (!(rk = rd_kafka_new(RD_KAFKA_PRODUCER, conf, errstr, sizeof(errstr)))) {
+    if (!(rk = rd_kafka_new(RD_KAFKA_PRODUCER, conf, errstr, errstr_sz))) {
         ngx_log_error(NGX_LOG_CRIT, pool->log, 0,
-                "json_log: Error allocating kafka handler");
+                "json_log: error allocating kafka handler");
         return NULL;
     }
 
@@ -127,12 +155,13 @@ ngx_json_log_kafka_producer_new(ngx_pool_t *pool, rd_kafka_conf_t * conf)
 }
 
 
-size_t ngx_json_log_kafka_add_brokers(ngx_pool_t *pool, rd_kafka_t *rk, ngx_array_t *brokers)
+size_t
+ngx_json_log_kafka_add_brokers(ngx_pool_t *pool,
+    rd_kafka_t *rk, ngx_array_t *brokers)
 {
     ngx_str_t    *rec;
     ngx_str_t    *broker;
     u_char       *value = NULL;
-
     size_t       ret = 0;
 
     rec = brokers->elts;
@@ -155,17 +184,19 @@ size_t ngx_json_log_kafka_add_brokers(ngx_pool_t *pool, rd_kafka_t *rk, ngx_arra
 
 
 /* creates a configured topic */
-rd_kafka_topic_t * ngx_json_log_kafka_topic_new(ngx_pool_t *pool, rd_kafka_t *rk, rd_kafka_topic_conf_t *topic_conf, ngx_str_t *topic)
+rd_kafka_topic_t *
+ngx_json_log_kafka_topic_new(ngx_pool_t *pool,
+    rd_kafka_t *rk, rd_kafka_topic_conf_t *topic_conf, ngx_str_t *topic)
 {
     u_char *value = ngx_json_log_str_dup(pool, topic);
-
+    rd_kafka_topic_t * rkt;
     if (! rk ) {
         ngx_log_error(NGX_LOG_CRIT, pool->log, 0,
                 "json_log: missing kafka handler");
         return NULL;
     }
 
-    rd_kafka_topic_t * rkt = rd_kafka_topic_new(rk, (const char *)value, topic_conf);
+    rkt = rd_kafka_topic_new(rk, (const char *)value, topic_conf);
     if(!rkt) {
         /* FIX ME - Why sooooo quiet! */
         ngx_log_error(NGX_LOG_WARN, pool->log, 0,
@@ -199,6 +230,7 @@ ngx_json_log_init_kafka(ngx_pool_t *pool,
     kafka->max_retries         = NGX_CONF_UNSET_UINT;
     kafka->buffer_max_messages = NGX_CONF_UNSET_UINT;
     kafka->backoff_ms          = NGX_CONF_UNSET_UINT;
+    kafka->partition           = NGX_CONF_UNSET;
 
     return NGX_OK;
 }
@@ -212,12 +244,10 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
     /* configuration kafka constants */
     static const char *conf_client_id_key          = "client.id";
     static const char *conf_compression_codec_key  = "compression.codec";
-    static const char *conf_debug_key              = "debug";
     static const char *conf_log_level_key          = "log_level";
     static const char *conf_max_retries_key        = "message.send.max.retries";
     static const char *conf_buffer_max_msgs_key    = "queue.buffering.max.messages";
     static const char *conf_retry_backoff_ms_key   = "retry.backoff.ms";
-    static ngx_str_t   conf_all_value              = ngx_string("all");
 
     /* - default values - */
     static ngx_str_t  kafka_compression_default_value = ngx_string("snappy");
@@ -227,6 +257,11 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
     static ngx_int_t  kafka_buffer_max_messages_default_value = 100000;
     static ngx_msec_t kafka_backoff_ms_default_value = 10;
 
+#if (NGX_DEBUG)
+    static const char *conf_debug_key              = "debug";
+    static ngx_str_t   conf_all_value              = ngx_string("all");
+#endif
+
     /* create kafka configuration */
     conf->rkc = ngx_json_log_kafka_conf_new(pool);
     if (! conf->rkc) {
@@ -235,6 +270,7 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
 
     /* configure compression */
     if ((void*) conf->compression.data == NULL) {
+        conf->compression = kafka_compression_default_value;
         ngx_json_log_kafka_conf_set_str(pool, conf->rkc,
                 conf_compression_codec_key,
                 &kafka_compression_default_value);
@@ -292,6 +328,11 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
                 conf->log_level);
     }
 
+    /* configure partition */
+    if (conf->partition == NGX_CONF_UNSET) {
+        conf->partition = RD_KAFKA_PARTITION_UA;
+    }
+
 #if (NGX_DEBUG)
     /* configure debug */
     ngx_json_log_kafka_conf_set_str(pool,conf->rkc,
@@ -330,7 +371,7 @@ ngx_json_log_configure_kafka(ngx_pool_t *pool,
 
 void
 ngx_json_log_kafka_topic_disable_ack(ngx_pool_t *pool,
-        rd_kafka_topic_conf_t *rktc)
+    rd_kafka_topic_conf_t *rktc)
 {
     static const char *conf_req_required_acks_key  = "request.required.acks";
     static ngx_str_t   conf_zero_value             = ngx_string("0");
