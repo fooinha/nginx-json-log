@@ -37,7 +37,7 @@
 #include "ngx_json_log_text.h"
 #include "ngx_http_json_log_variables.h"
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
 
 #include "ngx_json_log_kafka.h"
 
@@ -78,7 +78,7 @@ static ngx_command_t ngx_http_json_log_commands[] = {
         0,
         NULL
     },
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     /* KAFKA */
     {
         ngx_string("json_log_kafka_client_id"),
@@ -180,7 +180,7 @@ ngx_module_t ngx_http_json_log_module = {
 static ngx_int_t
 ngx_http_json_log_init_worker(ngx_cycle_t *cycle) {
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     ngx_int_t rc = NGX_OK;
     ngx_http_json_log_main_conf_t  *conf =
         ngx_http_cycle_get_module_main_conf(cycle, ngx_http_json_log_module);
@@ -218,7 +218,7 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r) {
     ngx_json_log_output_location_t     *location;
 
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     int                                 err;
     ngx_http_json_log_main_conf_t       *mcf;
     ngx_str_t                           msg_id;
@@ -240,7 +240,7 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r) {
         return NGX_OK;
     }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     mcf = ngx_http_get_module_main_conf(r, ngx_http_json_log_module);
 #endif
 
@@ -290,7 +290,7 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r) {
             continue;
         }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
         /* Write to kafka */
         if (location->type == NGX_JSON_LOG_SINK_KAFKA) {
 
@@ -406,7 +406,7 @@ ngx_http_json_log_create_main_conf(ngx_conf_t *cf) {
         return NULL;
     }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     if (ngx_json_log_init_kafka(cf->pool, &conf->kafka) != NGX_OK) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "http_json_log: error initialize kafka conf");
@@ -498,7 +498,7 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         new_location = ngx_array_push(lc->locations);
         new_location->type = NGX_JSON_LOG_SINK_FILE;
         prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     }
     else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
         new_location = ngx_array_push(lc->locations);
@@ -529,7 +529,7 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
                 &new_location->location);
     }
 
-#ifdef HTTP_JSON_LOG_KAFKA_ENABLED
+#if (NGX_HAVE_LIBRDKAFKA)
     /* If sink type is kafka, then set topic config for this location */
     if (new_location->type == NGX_JSON_LOG_SINK_KAFKA) {
 

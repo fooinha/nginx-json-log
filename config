@@ -1,34 +1,12 @@
 ngx_addon_name=ngx_json_log_module
 ngx_module_incs=$ngx_addon_dir/src
 
-HTTP_JSON_LOG_KAFKA=NO
-
-cat << END > $NGX_AUTOTEST.c
-
-#include <librdkafka/rdkafka.h>
-
-int main(void) {
-    rd_kafka_type_t i = 0;
-    return (int) i;
-}
-
-END
-
-$CC $CC_TEST_FLAGS $CC_AUX_FLAGS -o /dev/null \
-  $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs 2> /dev/null > /dev/null
-
-if [ $? -eq 0 ]; then
-    HTTP_JSON_LOG_KAFKA=YES
-fi
-
-
 NGINX_VERSION=`grep version src/core/nginx.h  | sed 's/#define nginx_version *//;'`
 
 if [ ! -z "${NGINX_VERSION}" ]
 then
     if [ $NGINX_VERSION -gt 1011002 ]
     then
-        HAS_STREAM_JSON_LOG=true
         STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_module"
         STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_preread_module"
         NGX_ADDON_SRCS="$NGX_ADDON_SRCS                           \
@@ -52,13 +30,24 @@ NGX_ADDON_SRCS="$NGX_ADDON_SRCS                         \
  $ngx_addon_dir/src/ngx_http_json_log_module.c          \
  "
 
-CORE_LIBS="$CORE_LIBS -ljansson"
+#
+# rdkafka
+#
+ngx_feature="librdkafka"
+ngx_feature_name="NGX_HAVE_LIBRDKAFKA"
+ngx_feature_run=no
+ngx_feature_incs="#include <librdkafka/rdkafka.h>"
+ngx_feature_path=
+ngx_feature_libs="-lrdkafka"
+ngx_feature_test="rd_kafka_new(RD_KAFKA_PRODUCER, NULL, NULL, 0);"
+. auto/feature
 
-if [ $HTTP_JSON_LOG_KAFKA = YES ]; then
+if [ $ngx_found = yes ]; then
     echo " + ngx_json_log: kafka support"
-    CFLAGS="$CFLAGS -DHTTP_JSON_LOG_KAFKA_ENABLED"
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_json_log_kafka.c"
-    CORE_LIBS="$CORE_LIBS -lrdkafka"
+    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
 fi
 
 
+
+CORE_LIBS="$CORE_LIBS -ljansson"
