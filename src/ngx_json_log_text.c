@@ -252,6 +252,7 @@ ngx_json_log_find_parent(ngx_pool_t *pool, ngx_array_t *arr_items,
                     "json_log: Failed allocate new http_json_log level");
             return NULL;
         }
+        ngx_memzero(level, sizeof(*level));
 
         level->label.len = len;
         level->label.data = ngx_palloc(pool, len);
@@ -607,6 +608,7 @@ ngx_json_log_read_format(ngx_conf_t *cf, ngx_json_log_module_type_e type,
                     0, "Failed to configure json_log_format.");
             return NGX_ERROR;
         }
+        ngx_memzero(item, sizeof(*item));
 
         if (type == NGX_JSON_LOG_HTTP) {
             http_cv = ngx_pcalloc(cf->pool, sizeof(ngx_http_complex_value_t));
@@ -768,12 +770,12 @@ ngx_http_json_log_main_format_block(ngx_conf_t *cf,
 
     /*TODO*: to verify if format name is duplicated */
     new_format = ngx_array_push(mcf->formats);
-
     if (!new_format) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Failed to create json log format.");
         return NGX_CONF_ERROR;
     }
+    ngx_memzero(new_format, sizeof(*new_format));
 
     /* Saves the format name and the format spec value */
     new_format->name   = args[1];
@@ -846,12 +848,12 @@ ngx_stream_json_log_main_format_block(ngx_conf_t *cf,
 
     /*TODO*: to verify if format name is duplicated */
     new_format = ngx_array_push(mcf->formats);
-
     if (!new_format) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Failed to create json log format.");
         return NGX_CONF_ERROR;
     }
+    ngx_memzero(new_format, sizeof(*new_format));
 
     /* Saves the format name and the format spec value */
     new_format->name   = args[1];
