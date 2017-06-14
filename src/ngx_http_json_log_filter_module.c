@@ -566,6 +566,11 @@ ngx_http_json_log_header_filter(ngx_http_request_t *r)
     for (i = 0; i < part->nelts ; ++i) {
 
         header_copy = ngx_array_push(headers);
+        if (! header_copy) {
+            continue;
+        }
+        ngx_memzero(header_copy, sizeof(*header_copy));
+
         header_copy->hash = -1;
         header_copy->lowcase_key  = NULL;
 
@@ -828,27 +833,29 @@ ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = &args[1];
 
-    if (NGX_JSON_LOG_HAS_FILE_PREFIX(value)) {
-        new_location = ngx_array_push(lc->locations);
-        new_location->type = NGX_JSON_LOG_SINK_FILE;
-        prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
-#if (NGX_HAVE_LIBRDKAFKA)
-    }
-    else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
-        new_location = ngx_array_push(lc->locations);
-        new_location->type = NGX_JSON_LOG_SINK_KAFKA;
-        prefix_len = NGX_JSON_LOG_KAFKA_OUT_LEN;
-#endif
-    } else {
+    if (! NGX_JSON_LOG_HAS_FILE_PREFIX(value) &&
+        ! NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Invalid prefix [%v] for HTTP log JSON output location", value);
         return NGX_CONF_ERROR;
     }
 
-    if (!new_location) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                "Failed to add [%v] for HTTP log JSON output location", value);
+    new_location = ngx_array_push(lc->locations);
+    if (new_location == NULL) {
         return NGX_CONF_ERROR;
+    }
+    ngx_memzero(new_location, sizeof(*new_location));
+
+    prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
+    if (NGX_JSON_LOG_HAS_FILE_PREFIX(value)) {
+        new_location->type = NGX_JSON_LOG_SINK_FILE;
+        prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
+#if (NGX_HAVE_LIBRDKAFKA)
+    }
+    else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
+        new_location->type = NGX_JSON_LOG_SINK_KAFKA;
+        prefix_len = NGX_JSON_LOG_KAFKA_OUT_LEN;
+#endif
     }
 
     /* Saves location without prefix. */
