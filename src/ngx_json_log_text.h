@@ -28,9 +28,9 @@
 
 #include <ngx_http.h>
 #include <ngx_http_variables.h>
+#if nginx_version >= 1011002
 #include <ngx_stream.h>
 
-#if nginx_version >= 1011002
 #include <ngx_stream_variables.h>
 #endif
 

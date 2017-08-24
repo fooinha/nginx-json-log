@@ -501,8 +501,11 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = &args[1];
 
-    if (! NGX_JSON_LOG_HAS_FILE_PREFIX(value) &&
-        ! NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
+    if (! NGX_JSON_LOG_HAS_FILE_PREFIX(value)
+#if (NGX_HAVE_LIBRDKAFKA)
+       && ! NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)
+#endif
+       ) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Invalid prefix [%v] for HTTP log JSON output location", value);
         return NGX_CONF_ERROR;
