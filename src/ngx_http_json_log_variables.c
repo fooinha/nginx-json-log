@@ -180,6 +180,9 @@ ngx_http_json_log_get_variable_req_headers(ngx_http_request_t *r,
     ngx_table_elt_t              *header = part->elts;
     char                         *key = NULL;
     json_t                       *object = json_object();
+#if JANSSON_VERSION_HEX < 0x020700
+    char                         *buf;
+#endif
 
     for (i = 0; i < part->nelts ; ++i) {
         if (!header[i].key.data  || !header[i].key.len) {
@@ -190,9 +193,18 @@ ngx_http_json_log_get_variable_req_headers(ngx_http_request_t *r,
             return NGX_ERROR;
         }
         ngx_memcpy(key, header[i].key.data, header[i].key.len);
+#if JANSSON_VERSION_HEX >= 0x020700
         json_object_set(object, (const char *) key,
                 json_stringn((const char *) header[i].value.data,
-                    header[i].value.len));
+                header[i].value.len));
+#else
+        buf = ngx_pcalloc(r->pool, header[i].value.len + 1);
+        if (buf) {
+            ngx_memcpy(buf,  header[i].value.data, header[i].value.len);
+            json_object_set(object, (const char *) key, json_string(buf));
+        }
+
+#endif
     }
     v->data = (void *) object;
 
@@ -209,6 +221,9 @@ ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
     ngx_array_t                  *headers = (ngx_array_t *) data;
     json_t                       *object;
     char                         *key;
+#if JANSSON_VERSION_HEX < 0x020700
+    char                         *buf;
+#endif
 
     if (!headers) {
         return;
@@ -236,9 +251,17 @@ ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
             return;
         }
         ngx_memcpy(key, header[i].key.data, header[i].key.len);
+#if JANSSON_VERSION_HEX >= 0x020700
         json_object_set(object, (const char *) key,
                 json_stringn((const char *) header[i].value.data,
-                    header[i].value.len));
+                header[i].value.len));
+#else
+        buf = ngx_pcalloc(r->pool, header[i].value.len + 1);
+        if (buf) {
+            ngx_memcpy(buf,  header[i].value.data, header[i].value.len);
+            json_object_set(object, (const char *) key, json_string(buf));
+        }
+#endif
     }
 
     if (object) {
@@ -256,6 +279,9 @@ ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
     ngx_str_t                          base64;
     json_t                            *object = NULL;
     ngx_str_t                         *payload = (ngx_str_t *) data;
+#if JANSSON_VERSION_HEX < 0x020700
+    char                              *buf;
+#endif
 
     if (!payload || !payload->data) {
         return;
@@ -264,7 +290,11 @@ ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
     /* Empty payload */
     if (!payload->len) {
         set_current_mem_pool(r->pool);
+#if JANSSON_VERSION_HEX >= 0x020700
         object = json_stringn((const char *) "", 0);
+#else
+        object = json_string((const char *) "");
+#endif
         if (object) {
             v->valid = 1;
             v->data = (void *) object;
@@ -282,7 +312,17 @@ ngx_http_json_log_set_variable_req_body(ngx_http_request_t *r,
     ngx_encode_base64(&base64, payload);
 
     set_current_mem_pool(r->pool);
+
+#if JANSSON_VERSION_HEX >= 0x020700
     object = json_stringn((const char *) base64.data, base64.len);
+#else
+    buf = ngx_pcalloc(r->pool, base64.len + 1);
+    if (buf) {
+        ngx_memcpy(buf, base64.data, base64.len);
+        object = json_string(buf);
+    }
+#endif
+
     if (object) {
         v->valid = 1;
         v->data = (void *) object;
@@ -300,6 +340,9 @@ ngx_http_json_log_set_variable_req_body_hexdump(ngx_http_request_t *r,
     json_t                            *value = NULL;
     ngx_str_t                         *payload = (ngx_str_t *) data;
     size_t                             start, i;
+#if JANSSON_VERSION_HEX < 0x020700
+    char                              *buf;
+#endif
 
     if (!payload || !payload->data) {
         return;
@@ -308,7 +351,11 @@ ngx_http_json_log_set_variable_req_body_hexdump(ngx_http_request_t *r,
     /* Empty payload */
     if (!payload->len) {
         set_current_mem_pool(r->pool);
+#if JANSSON_VERSION_HEX >= 0x020700
         object = json_stringn((const char *) "", 0);
+#else
+        object = json_string((const char *) "");
+#endif
         if (object) {
             v->valid = 1;
             v->data = (void *) object;
@@ -331,7 +378,15 @@ ngx_http_json_log_set_variable_req_body_hexdump(ngx_http_request_t *r,
     start = 0;
     for (i = 0; i < hexdump.len; ++i) {
         if (hexdump.data[i] == '\n') {
+#if JANSSON_VERSION_HEX >= 0x020700
             value = json_stringn((const char *) hexdump.data+start, (i-start));
+#else
+            buf = ngx_pcalloc(r->pool, (i-start) + 1);
+            if (buf) {
+                ngx_memcpy(buf, hexdump.data+start, (i-start));
+                object = json_string(buf);
+            }
+#endif
             json_array_append(object, value);
             ++i;
             start = i;

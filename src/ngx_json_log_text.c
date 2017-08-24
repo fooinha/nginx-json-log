@@ -305,7 +305,11 @@ static void ngx_json_log_add_json_node( json_t *base,
 
     if (type == JSON_STRING) {
         /* it's a string type */
+#if JANSSON_VERSION_HEX >= 0x020700
         node = json_stringn((const char *)value->data, value->len);
+#else
+        node = json_string((const char *)value->data);
+#endif
 
     } else if (type == JSON_INTEGER) {
         /* it's a integer type*/
@@ -330,7 +334,11 @@ static void ngx_json_log_add_json_node( json_t *base,
             node = json_real(val_real);
         }
     } else {
+#if JANSSON_VERSION_HEX >= 0x020700
         node = json_stringn((const char *)value->data, value->len);
+#else
+        node = json_string((const char *)value->data);
+#endif
     }
 
     if (node) {
@@ -361,12 +369,12 @@ ngx_json_log_output_add_item(
     ngx_http_complex_value_t    *http_ccv = NULL;
 
 #if nginx_version >= 1011002
+    ngx_stream_session_t        *s = NULL;
     ngx_stream_complex_value_t  *stream_ccv = NULL;
 #endif
 
     ngx_int_t                   err = 0;
     ngx_http_request_t          *r = NULL;
-    ngx_stream_session_t        *s = NULL;
 
     if (type == NGX_JSON_LOG_HTTP) {
         http_ccv = (ngx_http_complex_value_t *) item->http_ccv;
@@ -442,14 +450,18 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
     char                          *txt = NULL;
     char                          *dump = NULL;
     ngx_http_request_t            *r = NULL;
+#if nginx_version >= 1011002
     ngx_stream_session_t          *s = NULL;
+#endif
 
     if (type == NGX_JSON_LOG_HTTP) {
         r = (ngx_http_request_t *) rs;
         set_current_mem_pool(r->pool);
+#if nginx_version >= 1011002
     } else if (type == NGX_JSON_LOG_STREAM) {
         s = (ngx_stream_session_t *) rs;
         set_current_mem_pool(s->connection->pool);
+#endif
     }
 
     if (ngx_json_log_output_cxt_new(
@@ -467,7 +479,11 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
     }
 
     dump = json_dumps(ctx.root,
-            JSON_INDENT(0) | JSON_REAL_PRECISION(2) | JSON_COMPACT);
+            JSON_INDENT(0) |
+#if JANSSON_VERSION_HEX >= 0x020700
+            JSON_REAL_PRECISION(2) |
+#endif
+            JSON_COMPACT);
 
     set_current_mem_pool(NULL);
 
@@ -484,9 +500,13 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
     if (type == NGX_JSON_LOG_HTTP) {
         txt = ngx_pcalloc(r->pool, dump_len + 2);
     }
+
+#if nginx_version >= 1011002
     if (type == NGX_JSON_LOG_STREAM) {
         txt = ngx_pcalloc(s->connection->pool, dump_len + 2);
     }
+#endif
+
     if (!txt) {
         return NULL;
     }

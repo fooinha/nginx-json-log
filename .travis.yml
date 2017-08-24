@@ -30,9 +30,8 @@ install:
   - hg clone http://hg.nginx.org/nginx
 
 script:
-  - cd test-nginx/ && sudo cpanm . && cd ..
-  - sudo cpanm install JSON
   - cd nginx
+  - ls -la
   - auto/configure --with-debug --with-stream --with-ld-opt="-Wl,-E" --prefix=$NGINX_PREFIX --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
   - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
   - sudo make install > build.log 2>&1 || (cat build.log && exit 1)
@@ -40,4 +39,11 @@ script:
   - export PATH=$NGINX_PREFIX/sbin:$PATH
   - /opt/nginx/sbin/nginx -V
   - ldd /opt/nginx/sbin/nginx
+  - echo "Starting tests"
+  - sudo cpanm install --force List::MoreUtils
+  - sudo cpanm install LWP::UserAgent
+  - sudo cpanm install JSON
+  - cd test-nginx
+  - sudo cpanm .
+  - cd ..
   - prove

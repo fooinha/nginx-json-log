@@ -28,7 +28,10 @@
 
 #include <ngx_core.h>
 #include <ngx_http.h>
+
+#if nginx_version >= 1011002
 #include <ngx_stream.h>
+#endif
 
 #if (NGX_HAVE_LIBRDKAFKA)
 
