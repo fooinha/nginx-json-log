@@ -20,7 +20,7 @@ It supports multiple output destinations with multiple formats for a location.
 
 ### Current version and limitations
 
-Current version released is 0.0.5.
+Current version released is 0.0.6.
 
 Stream logging is only available when using nginx (>= 1.11.2).
 

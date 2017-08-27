@@ -1,4 +1,20 @@
-Changes with ngx-json-log 0.0.4                                     19 Apr 2017
+Changes with ngx-json-log 0.0.6                                     27 Aug 2017
+
+    *) hexdump variables
+        *) $http_json_log_req_body_hexdump
+        *) $http_json_err_log_req_hexdump
+    *) $ngx_stream_json_log_payload variable
+    *) log formats moved to main config
+    *) more info while fail to log to file
+    *) fix compilation without stream support
+    *) fix compilation with libjansson < 2.7.0
+    *) arrays zero memory
+    *) kafka bug fixing
+    *) kafka feature check at configure
+    *) code style fixes
+    *) alpine docker and kafka edege update
+
+Changes with ngx-json-log 0.0.5                                     19 Apr 2017
     *) json log for stream
     *) json log http bad requests
        *)  directives log_err_json_*
@@ -11,7 +27,7 @@ Changes with ngx-json-log 0.0.4                                     19 Apr 2017
        *) full log format configuration
        *) elk services
     *) documentation
-       *)  mail log example
+       *) mail log example
 
 Changes with ngx-json-log 0.0.4                                      9 Apr 2017
     *) stream module log handler
