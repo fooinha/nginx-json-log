@@ -345,14 +345,19 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r)
                              * msg_opaque. */
                             NULL)) == -1) {
 
+#if RD_KAFKA_VERSION < 0x000b01ff
                 const char *errstr = rd_kafka_err2str(rd_kafka_errno2err(err));
+#else
+                const char *errstr = rd_kafka_err2str(rd_kafka_last_error());
+#endif
 
                 ngx_log_error(NGX_LOG_ERR, r->pool->log, 0,
                         "%% Failed to produce to topic %s "
-                        "partition %i: %s\n",
+                        "partition %i: %s - %d\n",
                         rd_kafka_topic_name(location->kafka.rkt),
                         mcf->kafka.partition,
-                        errstr);
+                        errstr,
+			err);
             } else {
 
 #if (NGX_DEBUG)
