@@ -87,5 +87,12 @@ ngx_int_t
 ngx_json_log_configure_kafka(ngx_pool_t *pool,
         ngx_json_log_main_kafka_conf_t *conf);
 
+void
+ngx_json_log_kafka_produce(ngx_pool_t *pool,
+        rd_kafka_t *rk,
+        rd_kafka_topic_t * rkt,
+        ngx_int_t partition,
+        char * txt, ngx_str_t *msg_id);
+
 #endif// (NGX_HAVE_LIBRDKAFKA)
 #endif// __NGX_LOG_JSON_KAFKA_H__

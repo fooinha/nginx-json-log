@@ -179,7 +179,6 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
 
 #if (NGX_HAVE_LIBRDKAFKA)
     ngx_stream_json_log_main_conf_t     *mcf;
-    int                                 err;
 
     mcf = ngx_stream_get_module_main_conf(s, ngx_stream_json_log_module);
 #endif
@@ -269,44 +268,9 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
                 continue;
             }
 
-            /* FIXME : Reconnect support */
-            /* Send/Produce message. */
-            if ((err =  rd_kafka_produce(
-                            location->kafka.rkt,
-                            mcf->kafka.partition,
-                            RD_KAFKA_MSG_F_COPY,
-                            /* Payload and length */
-                            txt, strlen(txt),
-                            /* Optional key and its length */
-                            NULL, 0,
-                            /* Message opaque, provided in
-                             * delivery report callback as
-                             * msg_opaque. */
-                            NULL)) == -1) {
-
-#if RD_KAFKA_VERSION < 0x000b01ff
-                const char *errstr = rd_kafka_err2str(rd_kafka_errno2err(err));
-#else
-                const char *errstr = rd_kafka_err2str(rd_kafka_last_error());
-#endif
-
-                ngx_log_error(NGX_LOG_ERR, s->connection->pool->log, 0,
-                        "%% Failed to produce to topic %s "
-                        "partition %i: %s - %d\n",
-                        rd_kafka_topic_name(location->kafka.rkt),
-                        mcf->kafka.partition,
-                        errstr, err);
-            } else {
-
-#if (NGX_DEBUG)
-
-                if (mcf) {
-                    ngx_log_error(NGX_LOG_DEBUG, s->connection->pool->log, 0,
-                            "http_json_log: kafka msg:[%s] ERR:[%d] QUEUE:[%d]",
-                            txt, err, rd_kafka_outq_len(mcf->kafka.rk));
-                }
-#endif
-            }
+            ngx_json_log_kafka_produce(s->connection->pool, mcf->kafka.rk,
+                    location->kafka.rkt,
+                    mcf->kafka.partition, txt, NULL);
 
          } // if KAFKA type
 #endif

@@ -387,4 +387,53 @@ ngx_json_log_kafka_topic_disable_ack(ngx_pool_t *pool,
     ngx_json_log_kafka_topic_conf_set_str(pool, rktc,
             conf_req_required_acks_key, &conf_zero_value);
 }
+
+void
+ngx_json_log_kafka_produce(ngx_pool_t *pool,
+    rd_kafka_t *rk,
+    rd_kafka_topic_t * rkt,
+    ngx_int_t partition,
+    char * txt, ngx_str_t *msg_id)
+{
+    int                             err;
+
+    /* FIXME : Reconnect support */
+    /* Send/Produce message. */
+    if ((err = rd_kafka_produce(
+                    rkt,
+                    partition,
+                    RD_KAFKA_MSG_F_COPY,
+                    /* Payload and length */
+                    txt, strlen(txt),
+                    /* Optional key and its length */
+                    msg_id && msg_id->data ? (const char *) msg_id->data: NULL,
+                    msg_id ? msg_id->len : 0,
+                    /* Message opaque, provided in
+                     * delivery report callback as
+                     * msg_opaque. */
+                    NULL)) == -1) {
+
+        ngx_log_error(NGX_LOG_ERR, pool->log, 0,
+                "%% Failed to produce to topic %s "
+                "partition %i: %s - %d\n",
+                rd_kafka_topic_name(rkt),
+                partition,
+#if RD_KAFKA_VERSION < 0x000b01ff
+               rd_kafka_err2str(rd_kafka_errno2err(err)),
+#else
+               rd_kafka_err2str(rd_kafka_last_error()),
+#endif
+               err);
+    }
+#if (NGX_DEBUG)
+
+    if (err) {
+        ngx_log_error(NGX_LOG_DEBUG, pool->log, 0,
+                "http_json_log: kafka msg:[%s] ERR:[%d] QUEUE:[%d]",
+                txt, err, rd_kafka_outq_len(rk));
+    }
+#endif
+
+}
+
 #endif// (NGX_HAVE_LIBRDKAFKA)
