@@ -26,7 +26,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <ngx_log.h>
 
 #include "ngx_http_json_log_module.h"
 #include "ngx_http_json_log_variables.h"
@@ -273,7 +272,7 @@ ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
 {
     ngx_http_json_log_filter_loc_conf_t  *lc = conf;
     ngx_str_t                            *args = cf->args->elts;
-    size_t                               sp = NGX_ERROR;
+    ssize_t                               sp;
 
     if (! args) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -282,7 +281,7 @@ ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
     }
 
     sp = ngx_parse_size(&args[1]);
-    if (sp == (size_t) NGX_ERROR) {
+    if (sp == NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Invalid argument for HTTP request body limit");
         return NGX_CONF_ERROR;
@@ -294,10 +293,8 @@ ngx_http_json_log_loc_req_body_limit(ngx_conf_t *cf,
 
     lc->req_body_limit = sp;
 
-
     return NGX_CONF_OK;
 }
-
 
 static size_t
 ngx_http_json_log_get_req_body_limit(ngx_http_request_t *r)
@@ -312,31 +309,31 @@ ngx_http_json_log_get_req_body_limit(ngx_http_request_t *r)
     return lc->req_body_limit;
 }
 
-
 static void
 ngx_http_json_log_header_bad_request(ngx_http_request_t *r)
 {
     ngx_http_json_log_srv_conf_t            *lc;
-    ngx_str_t                               filter_val;
+    ngx_str_t                                filter_val;
     char                                    *txt;
-    size_t                                  i, len;
+    size_t                                   i;
+    size_t                                   len;
     ngx_json_log_output_location_t          *arr;
     ngx_json_log_output_location_t          *location;
-    size_t                     limit = HTTP_LOG_JSON_REQ_BODY_LIMIT_DEFAULT;
-    ngx_str_t                  name = ngx_string("http_json_err_log_req");
-    ngx_str_t                           lcname;
-    ngx_http_variable_value_t           *vv;
-    ngx_uint_t                          varkey;
+    size_t                                   limit;
+    ngx_str_t                                name = ngx_string("http_json_err_log_req");
+    ngx_str_t                                lcname;
+    ngx_http_variable_value_t               *vv;
+    ngx_uint_t                               varkey;
 
-    ngx_str_t            name_hex = ngx_string("http_json_err_log_req_hexdump");
-    ngx_str_t                  lcname_hex;
-    ngx_http_variable_value_t  *vv_hex;
-    ngx_uint_t                 varkey_hex;
+    ngx_str_t                                name_hex = ngx_string("http_json_err_log_req_hexdump");
+    ngx_str_t                                lcname_hex;
+    ngx_http_variable_value_t               *vv_hex;
+    ngx_uint_t                               varkey_hex;
 
-    ngx_str_t                           payload;
+    ngx_str_t                                payload;
 
 #if (NGX_HAVE_LIBRDKAFKA)
-    ngx_str_t                               msg_id;
+    ngx_str_t                                msg_id;
     ngx_http_json_log_filter_main_conf_t    *mcf;
 #endif
 

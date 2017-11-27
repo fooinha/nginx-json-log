@@ -25,7 +25,6 @@
  */
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <ngx_log.h>
 
 #include <jansson.h>
 #include "ngx_json_log_text.h"
@@ -52,8 +51,8 @@ struct ngx_json_log_output_cxt_s {
     /* array to keep levels node values */
     /* no need for hash or list struct */
     /* as it should be very small */
-    json_t      *  root;
-    ngx_array_t *  items;
+    json_t        *root;
+    ngx_array_t   *items;
 };
 
 
@@ -177,10 +176,10 @@ ngx_json_log_find_saved_parent(ngx_pool_t *pool,
 static const char *
 ngx_json_log_label_key_dup(ngx_pool_t *pool, ngx_str_t *path, size_t max)
 {
-    u_char *copy = NULL;
-    int l = ngx_min(path->len, max);
-    int start= l - 1;
-    int i;
+    u_char                 *copy;
+    int                     l = ngx_min(path->len, max);
+    int                     start= l - 1;
+    int                     i;
 
     if (!path || !path->data || !path->len)
         return NULL;
@@ -330,7 +329,7 @@ static void ngx_json_log_add_json_node( json_t *base,
         u_char *nptr  = ngx_json_log_str_dup(pool, value);
         if (nptr) {
             char *endptr = (char *) nptr + value->len;
-            double val_real = strtold((const char *)nptr, &endptr);
+            double val_real = strtod((const char *)nptr, &endptr);
             node = json_real(val_real);
         }
     } else {
@@ -357,14 +356,14 @@ ngx_json_log_output_add_item(
         ngx_json_log_output_cxt_t *output_ctx,
         ngx_json_log_item_t *item)
 {
-    ngx_str_t                   value;
-    uint32_t                    levels = 0;
+    ngx_str_t                    value;
+    uint32_t                     levels = 0;
     json_t                      *parent = output_ctx->root;
 
-    ngx_str_t                   lcname;
-    ngx_uint_t                  varkey;
+    ngx_str_t                    lcname;
+    ngx_uint_t                   varkey;
     ngx_http_variable_value_t   *vv;
-    const char                  *key  = NULL;
+    const char                  *key = NULL;
 
     ngx_http_complex_value_t    *http_ccv = NULL;
 
@@ -373,7 +372,7 @@ ngx_json_log_output_add_item(
     ngx_stream_complex_value_t  *stream_ccv = NULL;
 #endif
 
-    ngx_int_t                   err = 0;
+    ngx_int_t                    err = 0;
     ngx_http_request_t          *r = NULL;
 
     if (type == NGX_JSON_LOG_HTTP) {
@@ -444,9 +443,10 @@ char *
 ngx_json_log_items_dump_text(ngx_json_log_module_type_e type, void *rs,
         ngx_array_t *items)
 {
-    ngx_json_log_output_cxt_t     ctx;
+    ngx_json_log_output_cxt_t      ctx;
     ngx_json_log_item_t           *item;
-    size_t                        i, dump_len;
+    size_t                         i;
+    size_t                         dump_len;
     char                          *txt = NULL;
     char                          *dump = NULL;
     ngx_http_request_t            *r = NULL;

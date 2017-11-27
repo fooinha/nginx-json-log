@@ -170,15 +170,15 @@ ngx_module_t  ngx_stream_json_log_module = {
 static ngx_int_t
 ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
 {
-    ngx_stream_json_log_srv_conf_t      *lc;
+    ngx_stream_json_log_srv_conf_t     *lc;
     ngx_str_t                           filter_val;
-    char                                *txt;
+    char                               *txt;
     size_t                              i;
     ngx_json_log_output_location_t     *arr;
     ngx_json_log_output_location_t     *location;
 
 #if (NGX_HAVE_LIBRDKAFKA)
-    ngx_stream_json_log_main_conf_t     *mcf;
+    ngx_stream_json_log_main_conf_t    *mcf;
 
     mcf = ngx_stream_get_module_main_conf(s, ngx_stream_json_log_module);
 #endif
@@ -331,8 +331,6 @@ ngx_stream_json_log_post_conf(ngx_conf_t *cf)
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
-    //TODO-OPTIMIZATION: to verify if the module should be registered on log phase
-
     h = ngx_array_push(&cmcf->phases[NGX_STREAM_LOG_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
@@ -449,28 +447,6 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         /* Set global variable */
         stream_json_log_has_kafka_locations = NGX_OK;
-
-//FIXME: #if nginx_version >= 1011000
-//FIXME:         ngx_http_compile_complex_value_t     ccv;
-//FIXME:         /*FIXME: Change this to an user's configured variable */
-//FIXME:         ngx_str_t                  msg_id_variable = ngx_string("$request_id");
-//FIXME:
-//FIXME:         /* Set variable for message id */
-//FIXME:         ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
-//FIXME:
-//FIXME:
-//FIXME:         ccv.cf = cf;
-//FIXME:         ccv.value = &msg_id_variable;
-//FIXME:         ccv.complex_value = ngx_pcalloc(cf->pool,
-//FIXME:                 sizeof(ngx_stream_complex_value_t));
-//FIXME:         if (ccv.complex_value == NULL) {
-//FIXME:             return NGX_CONF_ERROR;
-//FIXME:         }
-//FIXME:         if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
-//FIXME:             return NGX_CONF_ERROR;
-//FIXME:         }
-//FIXME:         new_location->kafka.stream_msg_id_var = ccv.complex_value;
-//FIXME: #endif
     }
 #endif
 
