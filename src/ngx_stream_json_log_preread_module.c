@@ -27,8 +27,6 @@
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
-#include <jansson.h>
-
 typedef struct {
     ngx_flag_t      enabled;
 } ngx_stream_json_log_preread_srv_conf_t;
@@ -60,8 +58,8 @@ static ngx_stream_module_t  ngx_stream_json_log_preread_module_ctx = {
     NULL,                                      /* create main configuration */
     NULL,                                        /* init main configuration */
 
-    ngx_stream_json_log_preread_create_srv_conf, /* create server configuration */
-    ngx_stream_json_log_preread_merge_srv_conf   /* merge server configuration */
+    ngx_stream_json_log_preread_create_srv_conf,/* create server configuration*/
+    ngx_stream_json_log_preread_merge_srv_conf  /* merge server configuration */
 };
 
 
@@ -87,15 +85,8 @@ ngx_stream_json_log_preread_handler(ngx_stream_session_t *s)
 
     ngx_connection_t                        *c;
     ngx_stream_json_log_preread_ctx_t       *ctx;
-//    ngx_stream_json_log_preread_srv_conf_t  *sscf;
 
     c = s->connection;
-
-//    sscf = ngx_stream_get_module_srv_conf(s, ngx_stream_json_log_preread_module);
-
-//    if (!sscf->enabled) {
-//        return NGX_DECLINED;
-//    }
 
     if (c->type != SOCK_STREAM) {
         return NGX_DECLINED;
@@ -120,9 +111,6 @@ ngx_stream_json_log_preread_handler(ngx_stream_session_t *s)
     }
 
     ctx->last = c->buffer->last;
-
-    //printf("H P>%p L>%p S>%lu\n" ,
-    //        ctx->pos, ctx->last, ctx->last-ctx->pos);
 
     return NGX_OK;
 }
@@ -218,51 +206,15 @@ ngx_stream_json_log_preread_payload_variable(ngx_stream_session_t *s,
 }
 
 
-//FIXME
-//static ngx_int_t
-//ngx_stream_json_log_preread_payload_hex_variable(ngx_stream_session_t *s,
-//    ngx_variable_value_t *v, uintptr_t data)
-//{
-//    ngx_stream_json_log_preread_ctx_t  *ctx;
-//    size_t                              len;
-//    ngx_str_t                           payload;
-//
-//    ctx = ngx_stream_get_module_ctx(s, ngx_stream_json_log_preread_module);
-//
-//    if (ctx == NULL) {
-//        v->not_found = 1;
-//        return NGX_OK;
-//    }
-//
-//    len = ctx->last-ctx->pos;
-//
-//    if (ctx->payload.data == NULL && len) {
-//        //FIXME
-//    }
-//
-//    v->valid = 1;
-//    v->no_cacheable = 0;
-//    v->not_found = 0;
-//
-//    return NGX_OK;
-//}
-
-
 static ngx_int_t
 ngx_stream_json_log_preread_add_variables(ngx_conf_t *cf)
 {
     ngx_stream_variable_t *var;
     ngx_str_t              payload = ngx_string("ngx_stream_json_log_payload");
 
-//    ngx_stream_variable_t *var_hex;
-//    ngx_str_t              payload_hex =
-//        ngx_string("ngx_stream_json_log_payload_hexdump");
 
     var = ngx_stream_add_variable(cf, &payload, 0);
     var->get_handler = ngx_stream_json_log_preread_payload_variable;
-
-//    var_hex = ngx_stream_add_variable(cf, &payload_hex, 0);
-//    var_hex->get_handler = ngx_stream_json_log_preread_payload_hex_variable;
 
     return NGX_OK;
 }

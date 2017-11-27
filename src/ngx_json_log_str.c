@@ -23,7 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#include <ngx_json_log_str.h>
+
+#include <ngx_core.h>
 
 
 /* duplicates and set as null terminated */
@@ -46,7 +47,9 @@ ngx_str_t *
 ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
         ngx_str_t *src, size_t len)
 {
-    ngx_str_t *str = ngx_pcalloc(pool, sizeof(ngx_str_t));
+    ngx_str_t           *str;
+
+    str = ngx_pcalloc(pool, sizeof(ngx_str_t));
     if (str == NULL) {
         return NULL;
     }
@@ -66,7 +69,7 @@ ngx_json_log_str_dup_from_buf_len(ngx_pool_t *pool,
 const char *
 ngx_json_log_buf_dup_len(ngx_pool_t *pool, u_char *src, size_t len)
 {
-    char *dst;
+    char                *dst;
 
     dst = ngx_pcalloc(pool, len + 1);
     if (dst == NULL) {
@@ -189,19 +192,6 @@ ngx_json_log_hexdump(ngx_str_t *src, ngx_str_t *dst)
     blocks = dst->len / blocksz;
     pos = dst->data;
     for (b = 0; b <= blocks ; ++b) {
-/*
-        if (b * blocksz < src->len) {
-            snprintf((char *)pos, 8,
-                    "%08X", (unsigned int) (b * blocksz));
-
-            pos += 8;
-            ngx_snprintf(pos, 2, "  ");
-            pos += 2;
-            //printf("%08x  ", (unsigned int) (b * blocksz));
-        } else {
-            break;
-        }
-*/
 
         for (i = 0; i < blocksz ; ++i) {
             l = (b * blocksz)  + i;
