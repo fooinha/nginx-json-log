@@ -170,15 +170,15 @@ ngx_module_t  ngx_stream_json_log_module = {
 static ngx_int_t
 ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
 {
-    ngx_stream_json_log_srv_conf_t      *lc;
+    ngx_stream_json_log_srv_conf_t     *lc;
     ngx_str_t                           filter_val;
-    char                                *txt;
+    char                               *txt;
     size_t                              i;
     ngx_json_log_output_location_t     *arr;
     ngx_json_log_output_location_t     *location;
 
 #if (NGX_HAVE_LIBRDKAFKA)
-    ngx_stream_json_log_main_conf_t     *mcf;
+    ngx_stream_json_log_main_conf_t    *mcf;
 
     mcf = ngx_stream_get_module_main_conf(s, ngx_stream_json_log_module);
 #endif

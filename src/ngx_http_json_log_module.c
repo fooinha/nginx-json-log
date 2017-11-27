@@ -28,19 +28,11 @@
 #include <ngx_http.h>
 #include <ngx_log.h>
 
-#include <ctype.h>
-#include <assert.h>
-
 #include "ngx_http_json_log_module.h"
-#include "ngx_json_log_str.h"
-#include "ngx_json_log_output.h"
-#include "ngx_json_log_text.h"
 #include "ngx_http_json_log_variables.h"
+#include "ngx_json_log_output.h"
 
 #if (NGX_HAVE_LIBRDKAFKA)
-
-#include "ngx_json_log_kafka.h"
-
 /*Global variable to indicate the we have kafka locations*/
 static ngx_int_t   http_json_log_has_kafka_locations     = NGX_CONF_UNSET;
 /* configuration kafka constants */
@@ -49,6 +41,10 @@ static ngx_int_t   http_json_log_has_kafka_locations     = NGX_CONF_UNSET;
 /* Configuration callbacks */
 static char *
 ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+
+static ngx_str_t                  msg_id_variable = ngx_string("$request_id");
+
 
 
 static void *        ngx_http_json_log_create_main_conf(ngx_conf_t *cf);
@@ -183,7 +179,7 @@ static ngx_int_t
 ngx_http_json_log_init_worker(ngx_cycle_t *cycle)
 {
 #if (NGX_HAVE_LIBRDKAFKA)
-    ngx_int_t rc = NGX_OK;
+    ngx_int_t                       rc;
     ngx_http_json_log_main_conf_t  *conf =
         ngx_http_cycle_get_module_main_conf(cycle, ngx_http_json_log_module);
 
@@ -213,9 +209,9 @@ ngx_http_json_log_exit_worker(ngx_cycle_t *cycle)
 /* log handler - format and print */
 static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r)
 {
-    ngx_http_json_log_loc_conf_t        *lc;
+    ngx_http_json_log_loc_conf_t       *lc;
     ngx_str_t                           filter_val;
-    char                                *txt;
+    char                               *txt;
     size_t                              i;
     ngx_json_log_output_location_t     *arr;
     ngx_json_log_output_location_t     *location;
@@ -491,7 +487,6 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if nginx_version >= 1011000
         ngx_http_compile_complex_value_t     ccv;
         /*FIXME: Change this to an user's configured variable */
-        ngx_str_t                  msg_id_variable = ngx_string("$request_id");
 
         /* Set variable for message id */
         ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));

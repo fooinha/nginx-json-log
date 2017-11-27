@@ -25,23 +25,12 @@
  */
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <ngx_regex.h>
-#include <ngx_http.h>
-#include <ngx_http.h>
-#include <ngx_queue.h>
-#include <ngx_http_variables.h>
 
 #include "ngx_http_json_log_variables.h"
 #include "ngx_json_log_text.h"
 #include "ngx_json_log_str.h"
 
 #include <jansson.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
 
 typedef ngx_queue_t *(*get_body_queue_pt)(ngx_http_request_t *r);
 
@@ -264,10 +253,9 @@ ngx_http_json_log_set_variable_resp_headers(ngx_http_request_t *r,
 #endif
     }
 
-    if (object) {
-        v->valid = 1;
-        v->data = (void *) object;
-    }
+    v->valid = 1;
+    v->data = (void *) object;
+
     set_current_mem_pool(NULL);
 }
 

@@ -26,7 +26,7 @@
 #ifndef __NGX_HTTP_JSON_LOG_MODULE_H__
 #define __NGX_HTTP_JSON_LOG_MODULE_H__
 
-#define NGX_JSON_LOG_VER    "0.0.5"
+#define NGX_JSON_LOG_VER    "0.0.7"
 
 #include <ngx_core.h>
 

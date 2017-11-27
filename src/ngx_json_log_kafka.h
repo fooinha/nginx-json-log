@@ -49,9 +49,9 @@ typedef struct ngx_json_log_kafka_conf_s ngx_json_log_kafka_conf_t;
 
 /* configuration data structures */
 struct ngx_json_log_main_kafka_conf_s {
-    rd_kafka_t       *rk;                  /* kafka connection handler */
-    rd_kafka_conf_t  *rkc;                 /* kafka configuration */
-    ngx_array_t      *brokers;             /* kafka list of brokers */
+    rd_kafka_t      *rk;                  /* kafka connection handler */
+    rd_kafka_conf_t *rkc;                 /* kafka configuration */
+    ngx_array_t     *brokers;             /* kafka list of brokers */
     size_t           valid_brokers;        /* number of valid brokers added */
     ngx_str_t        client_id;            /* kafka client id */
     ngx_str_t        compression;          /* kafka communication compression */
@@ -63,7 +63,7 @@ struct ngx_json_log_main_kafka_conf_s {
 };
 typedef struct ngx_json_log_main_kafka_conf_s ngx_json_log_main_kafka_conf_t;
 
-/* topic confifuration */
+/* topic configuration */
 rd_kafka_topic_conf_t *
 ngx_json_log_kafka_topic_conf_new(ngx_pool_t* pool);
 
