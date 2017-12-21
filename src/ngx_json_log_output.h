@@ -44,10 +44,18 @@
                  NGX_JSON_LOG_KAFKA_OUT_LEN) ==  0 )
 #endif
 
+#define NGX_JSON_LOG_SYSLOG_OUT_LEN (sizeof("syslog:") - 1)
+#define NGX_JSON_LOG_HAS_SYSLOG_PREFIX(str)                 \
+    (ngx_strncmp(str->data,                                 \
+                 "syslog:",                                 \
+                 NGX_JSON_LOG_SYSLOG_OUT_LEN) ==  0 )
+
+
 typedef enum {
     NGX_JSON_LOG_SINK_FILE = 0,
+    NGX_JSON_LOG_SINK_SYSLOG = 1,
 #if (NGX_HAVE_LIBRDKAFKA)
-    NGX_JSON_LOG_SINK_KAFKA = 1
+    NGX_JSON_LOG_SINK_KAFKA = 2
 #endif
 } ngx_json_log_sink_e;
 
@@ -55,7 +63,8 @@ struct ngx_json_log_output_location_s {
     ngx_str_t                                 location;
     ngx_json_log_sink_e                       type;
     ngx_json_log_format_t                     format;
-    ngx_open_file_t                           *file;
+    ngx_open_file_t                          *file;
+    ngx_syslog_peer_t                        *syslog;
 #if (NGX_HAVE_LIBRDKAFKA)
     ngx_json_log_kafka_conf_t                 kafka;
 #endif
@@ -66,6 +75,12 @@ typedef struct ngx_json_log_output_location_s ngx_json_log_output_location_t;
 ngx_int_t
 ngx_json_log_write_sink_file(ngx_log_t *log,
         ngx_fd_t fd, const char *txt);
+
+ngx_int_t
+ngx_json_log_write_sink_syslog(ngx_log_t *log,
+        ngx_pool_t* pool,
+        ngx_syslog_peer_t *syslog,
+        const char *txt);
 
 #endif // __NGX_JSON_LOG_OUTPUT_H__
 

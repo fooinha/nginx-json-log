@@ -14,13 +14,13 @@ The output format is configurable.
 
 It also allows to log complex and multi-level JSON documents.
 
-It supports logging to text file or to a kafka topic.
+It supports logging to text file, to syslog or to a kafka topic.
 
 It supports multiple output destinations with multiple formats for a location.
 
 ### Current version and limitations
 
-Current version released is 0.0.6.
+Current version released is 0.0.7.
 
 Stream logging is only available when using nginx (>= 1.11.2).
 
@@ -118,6 +118,7 @@ Additionally, the variable $http_json_err_log_req will be set with a base64 enco
      ';
 
      json_log file:/tmp/log my_log;'
+     json_log syslog:server=unix:/dev/log my_log;'
 ```
 
 This will produce the following JSON line to '/tmp/log' file .

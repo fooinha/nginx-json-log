@@ -287,7 +287,19 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r)
 
             if (ngx_json_log_write_sink_file(r->pool->log,
                         location->file->fd, txt) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Write Error!");
+                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "File write error!");
+            }
+            continue;
+        }
+
+        /* Write to syslog */
+        if (location->type == NGX_JSON_LOG_SINK_SYSLOG) {
+            if (!location->syslog) {
+                continue;
+            }
+            if (ngx_json_log_write_sink_syslog(r->pool->log,
+                        r->pool, location->syslog, txt) == NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Syslog write error!");
             }
             continue;
         }
@@ -472,6 +484,7 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_LIBRDKAFKA)
        && ! NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)
 #endif
+       && ! NGX_JSON_LOG_HAS_SYSLOG_PREFIX(value)
        ) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Invalid prefix [%v] for HTTP log JSON output location", value);
@@ -491,11 +504,13 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         new_location->type = NGX_JSON_LOG_SINK_FILE;
         prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
 #if (NGX_HAVE_LIBRDKAFKA)
-    }
-    else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
+    } else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
         new_location->type = NGX_JSON_LOG_SINK_KAFKA;
         prefix_len = NGX_JSON_LOG_KAFKA_OUT_LEN;
 #endif
+    } else if (NGX_JSON_LOG_HAS_SYSLOG_PREFIX(value)) {
+        new_location->type = NGX_JSON_LOG_SINK_SYSLOG;
+        prefix_len = NGX_JSON_LOG_SYSLOG_OUT_LEN;
     }
 
     /* Saves location without prefix. */
@@ -508,6 +523,18 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (new_location->type == NGX_JSON_LOG_SINK_FILE) {
         new_location->file = ngx_conf_open_file(cf->cycle,
                 &new_location->location);
+    }
+
+    /* If sink type is syslog */
+    if (new_location->type == NGX_JSON_LOG_SINK_SYSLOG) {
+        new_location->syslog = ngx_pcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
+        if (new_location->syslog == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_syslog_process_conf(cf, new_location->syslog) != NGX_CONF_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
 #if (NGX_HAVE_LIBRDKAFKA)
