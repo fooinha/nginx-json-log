@@ -30,12 +30,33 @@
 #include "ngx_json_log_text.h"
 #include "ngx_json_log_kafka.h"
 
+#define NGX_JSON_LOG_FILE_OUT_LEN (sizeof("file:") - 1)
+#define NGX_JSON_LOG_HAS_FILE_PREFIX(str)                   \
+    (ngx_strncmp(str->data,                                 \
+                 "file:",                                   \
+                 NGX_JSON_LOG_FILE_OUT_LEN) ==  0 )
+
+#if (NGX_HAVE_LIBRDKAFKA)
+#define NGX_JSON_LOG_KAFKA_OUT_LEN (sizeof("kafka:") - 1)
+#define NGX_JSON_LOG_HAS_KAFKA_PREFIX(str)                  \
+    (ngx_strncmp(str->data,                                 \
+                 "kafka:",                                  \
+                 NGX_JSON_LOG_KAFKA_OUT_LEN) ==  0 )
+#endif
+
+#define NGX_JSON_LOG_UPSTREAM_OUT_LEN (sizeof("upstream:") - 1)
+#define NGX_JSON_LOG_HAS_UPSTREAM_PREFIX(str)               \
+    (ngx_strncmp(str->data,                                 \
+                 "upstream:",                               \
+                 NGX_JSON_LOG_UPSTREAM_OUT_LEN) ==  0 )
+
 typedef enum {
     NGX_JSON_LOG_SINK_FILE = 0,
     NGX_JSON_LOG_SINK_SYSLOG = 1,
 #if (NGX_HAVE_LIBRDKAFKA)
-    NGX_JSON_LOG_SINK_KAFKA = 2
+    NGX_JSON_LOG_SINK_KAFKA = 2,
 #endif
+    NGX_JSON_LOG_SINK_UPSTREAM = 3
 } ngx_json_log_sink_e;
 
 struct ngx_json_log_output_location_s {
@@ -47,6 +68,7 @@ struct ngx_json_log_output_location_s {
 #if (NGX_HAVE_LIBRDKAFKA)
     ngx_json_log_kafka_conf_t                 kafka;
 #endif
+    ngx_http_upstream_srv_conf_t             *upstream;
 };
 
 typedef struct ngx_json_log_output_location_s ngx_json_log_output_location_t;
@@ -70,6 +92,11 @@ ngx_json_log_write_sink_syslog(ngx_log_t *log,
         ngx_pool_t* pool,
         ngx_syslog_peer_t *syslog,
         const char *txt);
+
+ngx_int_t
+ngx_json_log_write_sink_upstream(ngx_log_t *log,
+        ngx_fd_t fd, const char *txt);
+
 
 #endif // __NGX_JSON_LOG_OUTPUT_H__
 

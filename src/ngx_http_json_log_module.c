@@ -26,7 +26,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <ngx_log.h>
 
 #include "ngx_http_json_log_module.h"
 #include "ngx_http_json_log_variables.h"
@@ -344,6 +343,81 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r)
 
         } // if KAFKA type
 #endif
+
+        if (location->type == NGX_JSON_LOG_SINK_UPSTREAM) {
+
+            if (!location->upstream) {
+                continue;
+            }
+/*
+            ngx_http_upstream_t *u;
+
+            u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
+            if (u == NULL) {
+                continue;
+            }
+
+            u->
+
+            ngx_int_t rc = ngx_event_connect_peer(location->upstream);
+
+            ngx_log_error(NGX_LOG_INFO, r->pool->log, 0,
+                          "http_json_log: u-conn[%lu]\n",
+                          rc
+            );
+*/
+
+            //TODO : LOCKED TO FIRST ELEMENT AND FIRST ADDRESS
+            ngx_http_upstream_server_t *arr = location->upstream->servers->elts;
+            ngx_http_upstream_server_t *server = &arr[0];
+
+            ngx_log_error(NGX_LOG_INFO, r->pool->log, 0,
+                          "http_json_log: name:[%v] down:[%ul] naddrs=[%ul]\n",
+                          &server->name, server->down, server->naddrs
+            );
+
+            ngx_addr_t       *addrs = server->addrs;
+            ngx_socket_t      s = ngx_socket(addrs->sockaddr->sa_family,
+                                             SOCK_STREAM, 0);
+            ngx_connection_t *c = ngx_get_connection(s, r->pool->log);
+
+            if (c == NULL) {
+                if (ngx_close_socket(s) == -1) {
+                    ngx_log_error(NGX_LOG_ALERT, r->pool->log, ngx_socket_errno,
+                                  ngx_close_socket_n
+                                          "failed");
+                }
+                continue;
+            }
+
+            c->recv = ngx_recv;
+            c->send = ngx_send;
+            c->recv_chain = ngx_recv_chain;
+            c->send_chain = ngx_send_chain;
+
+            int rc = connect(s, addrs->sockaddr, addrs->socklen);
+            if (rc == -1) {
+                ngx_close_connection(c);
+                continue;
+            }
+
+            ngx_http_request_t *req = ngx_http_create_request(c);
+
+            if (req == NULL) {
+                continue;
+            }
+
+            req->keepalive = 1;
+
+            //write(s, "HEAD / HTTP/1.0\r\n\r\n", 19);
+            //printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+
+            //ngx_close_connection(c);
+            continue;
+
+
+        } // for upstream
+
     } // for location
 
     return NGX_OK;
@@ -427,8 +501,9 @@ ngx_http_json_log_create_loc_conf(ngx_conf_t *cf)
  *
  * Supported output destinations:
  *
- * file:   -> filesystem
- * kafka:  -> kafka topic
+ * file:     -> filesystem
+ * kafka:    -> kafka topic
+ * upstream: -> upstream connection
  */
 static char *
 ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -438,6 +513,9 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_json_log_format_t                *format;
     ngx_str_t                            *args = cf->args->elts;
     ngx_json_log_output_location_t       *new_location;
+
+
+
 
     if (! args) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -467,8 +545,8 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-#if (NGX_HAVE_LIBRDKAFKA)
     /* If sink type is kafka, then set topic config for this location */
+#if (NGX_HAVE_LIBRDKAFKA)
     if (new_location->type == NGX_JSON_LOG_SINK_KAFKA) {
         /* create topic conf */
         new_location->kafka.rktc = ngx_json_log_kafka_topic_conf_new(cf->pool);

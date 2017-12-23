@@ -54,11 +54,17 @@ ngx_json_log_output_location_conf(ngx_conf_t *cf,
     ngx_json_log_output_location_t       *new_location = NULL;
     size_t                                prefix_len;
 
+    size_t                                add;
+    u_short                               port;
+    ngx_url_t                             u;
+    ngx_str_t                            *url = NULL;
+
     if (! NGX_JSON_LOG_HAS_FILE_PREFIX(value)
 #if (NGX_HAVE_LIBRDKAFKA)
         && ! NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)
 #endif
         && ! NGX_JSON_LOG_HAS_SYSLOG_PREFIX(value)
+        && ! NGX_JSON_LOG_HAS_UPSTREAM_PREFIX(value)
         ) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "Invalid prefix [%v] JSON log output location", value);
@@ -85,6 +91,9 @@ ngx_json_log_output_location_conf(ngx_conf_t *cf,
     } else if (NGX_JSON_LOG_HAS_SYSLOG_PREFIX(value)) {
         new_location->type = NGX_JSON_LOG_SINK_SYSLOG;
         prefix_len = NGX_JSON_LOG_SYSLOG_OUT_LEN;
+    } else if (NGX_JSON_LOG_HAS_UPSTREAM_PREFIX(value)) {
+        new_location->type = NGX_JSON_LOG_SINK_UPSTREAM;
+        prefix_len = NGX_JSON_LOG_UPSTREAM_OUT_LEN;
     }
 
     /* Saves location without prefix. */
@@ -113,6 +122,52 @@ ngx_json_log_output_location_conf(ngx_conf_t *cf,
                     "Failed to process syslog JSON log output location");
             return NULL;
         }
+    }
+
+    /* If sink type is upstream, then validate upstream */
+    if (new_location->type == NGX_JSON_LOG_SINK_UPSTREAM) {
+
+        url = &new_location->location;
+
+        //TODO: to work with a script location
+        //ngx_uint_t n = ngx_http_script_variables_count(&new_location->location);
+
+        if (ngx_strncasecmp(url->data, (u_char *) "http://", 7) == 0) {
+            add = 7;
+            port = 80;
+
+        } else if (ngx_strncasecmp(url->data, (u_char *) "https://", 8) == 0) {
+
+#if (NGX_HTTP_SSL)
+            plcf->ssl = 1;
+
+        add = 8;
+        port = 443;
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "https protocol requires SSL support");
+        return NGX_CONF_ERROR;
+#endif
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid URL prefix");
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memzero(&u, sizeof(ngx_url_t));
+
+        u.url.len = url->len - add;
+        u.url.data = url->data + add;
+        u.default_port = port;
+        u.uri_part = 1;
+        u.no_resolve = 1;
+
+        new_location->upstream = ngx_http_upstream_add(cf, &u, 0);
+
+        if (new_location->upstream) {
+            printf("UPSTREAM %lu\n", new_location->upstream->servers->nelts);
+        }
+
     }
 
     return new_location;

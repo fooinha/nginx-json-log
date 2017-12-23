@@ -40,12 +40,12 @@ typedef enum {
 } ngx_json_log_module_type_e;
 
 struct ngx_json_log_format_s {
-    ngx_str_t                   name;           /* the format name */
-    ngx_str_t                   config;         /* value at config files */
-    ngx_array_t                 *items;         /* format items */
-    ngx_http_complex_value_t    *http_filter;   /* filter output */
+    ngx_str_t                    name;           /* the format name */
+    ngx_str_t                    config;         /* value at config files */
+    ngx_array_t                 *items;          /* format items */
+    ngx_http_complex_value_t    *http_filter;    /* filter output */
 #if nginx_version >= 1011002
-    ngx_stream_complex_value_t  *stream_filter; /* filter output */
+    ngx_stream_complex_value_t  *stream_filter;  /* filter output */
 #endif
 };
 typedef struct ngx_json_log_format_s     ngx_json_log_format_t;
@@ -83,6 +83,8 @@ ngx_json_log_items_dump_text(ngx_json_log_module_type_e type,
 /* Compares two items by name */
 ngx_int_t
 ngx_json_log_items_cmp(const void *left, const void *right);
+
+
 
 #endif // __NGX_JSON_LOG_TEXT_H__
 
