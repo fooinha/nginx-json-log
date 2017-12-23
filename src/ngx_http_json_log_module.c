@@ -287,7 +287,8 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r)
 
             if (ngx_json_log_write_sink_file(r->pool->log,
                         location->file->fd, txt) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "File write error!");
+                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0,
+                        "File write error!");
             }
             continue;
         }
@@ -299,7 +300,8 @@ static ngx_int_t ngx_http_json_log_log_handler(ngx_http_request_t *r)
             }
             if (ngx_json_log_write_sink_syslog(r->pool->log,
                         r->pool, location->syslog, txt) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Syslog write error!");
+                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0,
+                        "Syslog write error!");
             }
             continue;
         }
@@ -463,7 +465,8 @@ ngx_http_json_log_loc_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations, &args[1]);
+    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations,
+            &args[1]);
     if (new_location == NULL) {
         return NGX_CONF_ERROR;
     }

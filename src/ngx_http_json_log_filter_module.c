@@ -178,7 +178,8 @@ static ngx_command_t ngx_http_json_log_filter_commands[] = {
         NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
         ngx_conf_set_num_slot,
         NGX_HTTP_MAIN_CONF_OFFSET,
-        offsetof(ngx_http_json_log_filter_main_conf_t, kafka.buffer_max_messages),
+        offsetof(ngx_http_json_log_filter_main_conf_t,
+                kafka.buffer_max_messages),
         NULL
     },
     {
@@ -195,14 +196,14 @@ static ngx_command_t ngx_http_json_log_filter_commands[] = {
 
 /* config preparation */
 static ngx_http_module_t ngx_http_json_log_filter_module_ctx = {
-    NULL,                                      /* preconfiguration */
-    ngx_http_json_log_filter_init,             /* postconfiguration */
-    ngx_http_json_log_filter_create_main_conf, /* create main configuration */
-    NULL,                                      /* init main configuration */
-    ngx_http_json_log_filter_create_srv_conf,  /* create server configuration */
-    NULL,                                      /* merge server configuration */
-    ngx_http_json_log_filter_create_loc_conf,  /* create location configuration */
-    NULL                                       /* merge location configuration */
+    NULL,                                     /* preconfiguration */
+    ngx_http_json_log_filter_init,            /* postconfiguration */
+    ngx_http_json_log_filter_create_main_conf,/* create main configuration */
+    NULL,                                     /* init main configuration */
+    ngx_http_json_log_filter_create_srv_conf, /* create server configuration */
+    NULL,                                     /* merge server configuration */
+    ngx_http_json_log_filter_create_loc_conf, /* create location configuration*/
+    NULL                                      /* merge location configuration */
 };
 
 ngx_module_t ngx_http_json_log_filter_module = {
@@ -444,7 +445,8 @@ ngx_http_json_log_header_bad_request(ngx_http_request_t *r)
             }
             if (ngx_json_log_write_sink_syslog(r->pool->log,
                         r->pool, location->syslog, txt) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Syslog write error!");
+                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0,
+                        "Syslog write error!");
             }
             continue;
         }
@@ -673,7 +675,8 @@ ngx_http_json_log_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     if (!vv_hex) {
         return ngx_http_next_header_filter(r);
     }
-    ngx_http_json_log_set_variable_req_body_hexdump(r, vv_hex, (uintptr_t) &payload);
+    ngx_http_json_log_set_variable_req_body_hexdump(r,
+            vv_hex, (uintptr_t) &payload);
 
     return ngx_http_next_request_body_filter(r, in);
 }
@@ -795,7 +798,8 @@ ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations, &args[1]);
+    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations,
+            &args[1]);
     if (new_location == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -863,7 +867,6 @@ ngx_http_json_log_filter_init_worker(ngx_cycle_t *cycle)
     if (http_json_log_filter_has_kafka_locations == NGX_CONF_UNSET ) {
         return NGX_OK;
     }
-
 
     rc = ngx_json_log_configure_kafka(cycle->pool, &conf->kafka);
     if (rc != NGX_OK) {

@@ -206,7 +206,8 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
         /* Check filter result */
         if (location->format.stream_filter != NULL) {
             if (ngx_stream_complex_value(s,
-                        location->format.stream_filter, &filter_val) != NGX_OK) {
+                        location->format.stream_filter,
+                        &filter_val) != NGX_OK) {
                 /* WARN ? */
                 continue;
             }
@@ -248,8 +249,10 @@ ngx_stream_json_log_log_handler(ngx_stream_session_t *s)
                 continue;
             }
             if (ngx_json_log_write_sink_syslog(s->connection->pool->log,
-                        s->connection->pool,location->syslog, txt) == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, s->connection->pool->log, 0, "Syslog write error!");
+                        s->connection->pool,
+                        location->syslog, txt) == NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, s->connection->pool->log, 0,
+                        "Syslog write error!");
             }
             continue;
         }
@@ -343,8 +346,6 @@ ngx_stream_json_log_post_conf(ngx_conf_t *cf)
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
 
-    //TODO-OPTIMIZATION: to verify if the module should be registered on log phase
-
     h = ngx_array_push(&cmcf->phases[NGX_STREAM_LOG_PHASE].handlers);
     if (h == NULL) {
         return NGX_ERROR;
@@ -387,11 +388,11 @@ ngx_stream_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations, &args[1]);
+    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations,
+            &args[1]);
     if (new_location == NULL) {
         return NGX_CONF_ERROR;
     }
-
 
 #if (NGX_HAVE_LIBRDKAFKA)
     /* If sink type is kafka, then set topic config for this location */
@@ -423,7 +424,8 @@ ngx_stream_json_log_init_worker(ngx_cycle_t *cycle)
 {
 #if (NGX_HAVE_LIBRDKAFKA)
     ngx_stream_json_log_main_conf_t  *conf =
-        ngx_stream_cycle_get_module_main_conf(cycle, ngx_stream_json_log_module);
+        ngx_stream_cycle_get_module_main_conf(cycle,
+                ngx_stream_json_log_module);
 
     /* from this point we just are init kafka stuff */
     if (stream_json_log_has_kafka_locations == NGX_CONF_UNSET ) {
