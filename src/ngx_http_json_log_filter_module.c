@@ -767,15 +767,10 @@ static char *
 ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_json_log_srv_conf_t         *lc = conf;
-    ngx_http_json_log_main_conf_t        *mcf;
-    ngx_json_log_output_location_t       *new_location = NULL;
+    ngx_http_json_log_main_conf_t        *mcf = NULL;
     ngx_json_log_format_t                *format;
     ngx_str_t                            *args = cf->args->elts;
-    ngx_str_t                            *value = NULL;
-    ngx_str_t                            *format_name;
-    ngx_uint_t                            found = 0;
-    size_t                                prefix_len;
-    size_t                                i;
+    ngx_json_log_output_location_t       *new_location;
 
     if (! args) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -791,66 +786,20 @@ ngx_http_json_log_srv_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    /* Check if format exists by name */
-    format_name = &args[2];
-    format = mcf->formats->elts;
-    for (i = 0; i < mcf->formats->nelts; i++) {
-        if (ngx_strncmp(format_name->data, format[i].name.data,
-                    format[i].name.len) == 0) {
-            found = 1;
-            break;
-        }
-    }
-
+    format = ngx_json_log_check_format(mcf->formats, &args[2]);
     /* Do not accept unknown format names */
-    if (!found)  {
+    if (format == NULL)  {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                 "http_json_log: Invalid format name [%V]",
-                format_name);
+                &args[2]);
         return NGX_CONF_ERROR;
     }
 
-    value = &args[1];
-
-    if (! NGX_JSON_LOG_HAS_FILE_PREFIX(value)
-#if (NGX_HAVE_LIBRDKAFKA)
-        && ! NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)
-#endif
-    ) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                "Invalid prefix [%v] for HTTP log JSON output location", value);
-        return NGX_CONF_ERROR;
-    }
-
-    new_location = ngx_array_push(lc->locations);
+    new_location = ngx_json_log_output_location_conf(cf, format, lc->locations, &args[1]);
     if (new_location == NULL) {
         return NGX_CONF_ERROR;
     }
-    ngx_memzero(new_location, sizeof(*new_location));
 
-    prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
-    if (NGX_JSON_LOG_HAS_FILE_PREFIX(value)) {
-        new_location->type = NGX_JSON_LOG_SINK_FILE;
-        prefix_len = NGX_JSON_LOG_FILE_OUT_LEN;
-#if (NGX_HAVE_LIBRDKAFKA)
-    }
-    else if (NGX_JSON_LOG_HAS_KAFKA_PREFIX(value)) {
-        new_location->type = NGX_JSON_LOG_SINK_KAFKA;
-        prefix_len = NGX_JSON_LOG_KAFKA_OUT_LEN;
-#endif
-    }
-
-    /* Saves location without prefix. */
-    new_location->location       = args[1];
-    new_location->location.len   -= prefix_len;
-    new_location->location.data  += prefix_len;
-    new_location->format         =  format[i];
-
-    /* If sink type is file, then try to open it and save */
-    if (new_location->type == NGX_JSON_LOG_SINK_FILE) {
-        new_location->file = ngx_conf_open_file(cf->cycle,
-                &new_location->location);
-    }
 
 #if (NGX_HAVE_LIBRDKAFKA)
     /* If sink type is kafka, then set topic config for this location */
