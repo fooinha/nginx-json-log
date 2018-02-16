@@ -434,6 +434,18 @@ ngx_http_json_log_header_bad_request(ngx_http_request_t *r)
             continue;
         }
 
+        /* Write to syslog */
+        if (location->type == NGX_JSON_LOG_SINK_SYSLOG) {
+            if (!location->syslog) {
+                continue;
+            }
+            if (ngx_json_log_write_sink_syslog(r->pool->log,
+                        r->pool, location->syslog, txt) == NGX_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, r->pool->log, 0, "Syslog write error!");
+            }
+            continue;
+        }
+
 #if (NGX_HAVE_LIBRDKAFKA)
         /* Write to kafka */
         if (location->type == NGX_JSON_LOG_SINK_KAFKA) {
