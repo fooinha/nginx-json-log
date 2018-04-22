@@ -10,6 +10,11 @@ RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repos
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories
 RUN apk update
 
+RUN apk add busybox-static apk-tools-static
+RUN apk.static update
+RUN apk.static upgrade --no-self-upgrade --available --simulate
+RUN apk.static upgrade --no-self-upgrade --available
+
 RUN apk add --no-cache pcre
 RUN apk add --no-cache jansson jansson-dev
 RUN apk add --no-cache librdkafka librdkafka-dev
@@ -28,6 +33,7 @@ RUN cd nginx-json-log && git checkout ${GIT_BRANCH}
 RUN hg clone http://hg.nginx.org/nginx
 
 WORKDIR /build/nginx
+
 RUN apk add --no-cache gcc
 RUN apk add --no-cache alpine-sdk
 RUN apk add --no-cache pcre-dev
