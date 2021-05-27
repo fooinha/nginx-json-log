@@ -38,36 +38,50 @@ static ngx_int_t
 ngx_http_json_log_get_variable_req_headers(ngx_http_request_t *r,
         ngx_http_variable_value_t *v, uintptr_t data);
 
+static ngx_int_t empty_get_handler(ngx_http_request_t *r,
+        ngx_http_variable_value_t *v, uintptr_t data) {
+
+    /*  Does Nothing */
+    return NGX_OK;
+}
+
+static void empty_set_handler(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data) {
+    /*  Does Nothing */
+    return;
+}
+
+
 /* variables list */
 static ngx_http_variable_t  ngx_http_json_log_variables_list[] = {
         {   ngx_string("http_json_log_req_headers"),
-            NULL,
+            empty_set_handler,
             ngx_http_json_log_get_variable_req_headers,
             0, 0, 0
         },
         {   ngx_string("http_json_log_resp_headers"),
             ngx_http_json_log_set_variable_resp_headers,
-            NULL,
+            empty_get_handler,
             0, 0, 0
         },
         {   ngx_string("http_json_log_req_body"),
             ngx_http_json_log_set_variable_req_body,
-            NULL,
+            empty_get_handler,
             0, 0, 0
         },
         {   ngx_string("http_json_err_log_req"),
             ngx_http_json_log_set_variable_req_body,
-            NULL,
+            empty_get_handler,
             0, 0, 0
         },
         {   ngx_string("http_json_log_req_body_hexdump"),
             ngx_http_json_log_set_variable_req_body_hexdump,
-            NULL,
+            empty_get_handler,
             0, 0, 0
         },
         {   ngx_string("http_json_err_log_req_hexdump"),
             ngx_http_json_log_set_variable_req_body_hexdump,
-            NULL,
+            empty_get_handler,
             0, 0, 0
         }
 };
