@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: focal
 
 os: linux
 
@@ -14,15 +14,17 @@ cache:
 
 env:
   global:
+    - DEBIAN_FRONTEND=noninteractive
     - NGINX_PREFIX=/opt/nginx
     - JOBS=4
     - PATH=$PATH:$NGINX_PREFIX/sbin
 
 before_install:
-  - sudo apt-get install -qq -y software-properties-common
-  - sudo add-apt-repository "deb http://us.archive.ubuntu.com/ubuntu/ xenial main universe"
-  - sudo apt-get update -qq -y --fix-missing
-  - sudo apt-get install -qq -y --fix-missing cpanminus librdkafka-dev libjansson-dev mercurial build-essential make clang valgrind libjson-perl
+  - sudo ln -fs /usr/share/zoneinfo/UTC /etc/localtime
+  - sudo apt-get update -y
+  - sudo apt-get install -y tzdata
+  - sudo dpkg-reconfigure --frontend noninteractive tzdata
+  - sudo apt-get install -y cpanminus libpcre3-dev librdkafka-dev libjansson-dev mercurial build-essential make clang valgrind libjson-perl git
 
 install:
   - if [ ! -d /opt ]; then mkdir /opt; fi
@@ -31,8 +33,7 @@ install:
 
 script:
   - cd nginx
-  - ls -la
-  - auto/configure --with-debug --with-stream --with-ld-opt="-Wl,-E" --prefix=$NGINX_PREFIX --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
+  - auto/configure --with-debug --with-stream --with-ld-opt="-Wl,-E" --prefix=$NGINX_PREFIX --without-http_gzip_module --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
   - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
   - sudo make install > build.log 2>&1 || (cat build.log && exit 1)
   - cd ..

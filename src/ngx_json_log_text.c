@@ -57,13 +57,13 @@ struct ngx_json_log_output_cxt_s {
 
 
 /* format prefixes types and values */
-static const char *ngx_json_log_true_value               = "true";
-static const char *ngx_json_log_array_prefix             = "a:";
-static const char *ngx_json_log_boolean_prefix           = "b:";
-static const char *ngx_json_log_string_prefix            = "s:";
-static const char *ngx_json_log_real_prefix              = "r:";
-static const char *ngx_json_log_int_prefix               = "i:";
-static const char *ngx_json_log_null_prefix              = "n:";
+const char *ngx_json_log_true_value               = "true";
+const char *ngx_json_log_array_prefix             = "a:";
+const char *ngx_json_log_boolean_prefix           = "b:";
+const char *ngx_json_log_string_prefix            = "s:";
+const char *ngx_json_log_real_prefix              = "r:";
+const char *ngx_json_log_int_prefix               = "i:";
+const char *ngx_json_log_null_prefix              = "n:";
 
 typedef struct ngx_json_log_output_cxt_s ngx_json_log_output_cxt_t;
 
