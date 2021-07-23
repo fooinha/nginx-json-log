@@ -34,6 +34,7 @@ install:
 script:
   - cd nginx
   - auto/configure --with-debug --with-stream --with-ld-opt="-Wl,-E" --prefix=$NGINX_PREFIX --without-http_gzip_module --add-module=$PWD/.. > build.log 2>&1 || (cat build.log && exit 1)
+  - cat objs/ngx_modules.c | awk '{ sub("\"ngx_http_json_log_module\",", "");  sub("\"ngx_http_header_filter_module\"", "\"ngx_http_json_log_module\", \"ngx_http_header_filter_module\""); print}' > objs/ngx_modules.c.dat && mv objs/ngx_modules.c.dat objs/ngx_modules.c
   - make -j$JOBS > build.log 2>&1 || (cat build.log && exit 1)
   - sudo make install > build.log 2>&1 || (cat build.log && exit 1)
   - cd ..

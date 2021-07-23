@@ -3,32 +3,12 @@ ngx_module_incs=$ngx_addon_dir/src
 
 NGINX_VERSION=`grep version src/core/nginx.h  | sed 's/#define nginx_version *//;'`
 
-if [ ! -z "${NGINX_VERSION}" ]
-then
-    if [ $NGINX_VERSION -gt 1011002 ]
-    then
-        STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_module"
-        STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_preread_module"
-        NGX_ADDON_SRCS="$NGX_ADDON_SRCS                           \
-         $ngx_addon_dir/src/ngx_stream_json_log_preread_module.c  \
-         $ngx_addon_dir/src/ngx_stream_json_log_module.c"
-        echo " + ngx_json_log: stream support"
-    fi
-fi
-
-HTTP_MODULES="$HTTP_MODULES ngx_http_json_log_module"
-HTTP_FILTER_MODULES="$HTTP_FILTER_MODULES ngx_http_json_log_filter_module"
-
 CORE_INCS="$CORE_INCS $ngx_module_incs"
 
-NGX_ADDON_SRCS="$NGX_ADDON_SRCS                         \
- $ngx_addon_dir/src/ngx_json_log_str.c                  \
- $ngx_addon_dir/src/ngx_json_log_text.c                 \
- $ngx_addon_dir/src/ngx_json_log_output.c               \
- $ngx_addon_dir/src/ngx_http_json_log_variables.c       \
- $ngx_addon_dir/src/ngx_http_json_log_filter_module.c   \
- $ngx_addon_dir/src/ngx_http_json_log_module.c          \
- "
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_http_json_log_module.c"
+
+STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_module"
+HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES ngx_http_json_log_module"
 
 #
 # rdkafka
@@ -44,10 +24,20 @@ ngx_feature_test="rd_kafka_new(RD_KAFKA_PRODUCER, NULL, NULL, 0);"
 
 if [ $ngx_found = yes ]; then
     echo " + ngx_json_log: kafka support"
-    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_json_log_kafka.c"
     CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
 fi
 
-
-
 CORE_LIBS="$CORE_LIBS -ljansson"
+
+have_stream="0"
+case $NGX_CONFIGURE in
+  *"--with-stream"*)
+    STREAM_MODULES="$STREAM_MODULES ngx_stream_json_log_module";
+    echo " + ngx_json_log: stream support"
+    have_stream="1"
+    ;;
+esac
+
+have="NGX_HAVE_STREAM"
+value=$have_stream
+. auto/define

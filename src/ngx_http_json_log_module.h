@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Paulo Pacheco
+ * Copyright (C) 2017-2021 Paulo Pacheco
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,38 +26,8 @@
 #ifndef __NGX_HTTP_JSON_LOG_MODULE_H__
 #define __NGX_HTTP_JSON_LOG_MODULE_H__
 
-#define NGX_JSON_LOG_VER    "0.0.7"
+#define NGX_JSON_LOG_VER    "0.0.8"
 
-#include <ngx_core.h>
-
-#if (NGX_HAVE_LIBRDKAFKA)
-#include "ngx_json_log_kafka.h"
-#endif
-
-struct ngx_http_json_log_main_conf_s {
-    ngx_array_t                               *formats;
-#if (NGX_HAVE_LIBRDKAFKA)
-    ngx_json_log_main_kafka_conf_t  kafka;
-#endif
-};
-
-typedef struct ngx_http_json_log_main_conf_s   ngx_http_json_log_main_conf_t;
-
-struct ngx_http_json_log_loc_conf_s {
-    ngx_array_t                               *locations;
-};
-typedef struct ngx_http_json_log_loc_conf_s   ngx_http_json_log_loc_conf_t;
-
-struct ngx_http_json_log_srv_conf_s {
-    ngx_array_t                               *locations;
-};
-typedef struct ngx_http_json_log_srv_conf_s     ngx_http_json_log_srv_conf_t;
-
-ngx_int_t
-ngx_http_json_log_needs_body_filter();
-
-ngx_int_t
-ngx_http_json_log_needs_header_filter();
 
 #endif // __NGX_HTTP_JSON_LOG_MODULE_H__
 

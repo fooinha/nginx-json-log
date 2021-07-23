@@ -1,4 +1,4 @@
-# ngx-json-log  [![Build Status](https://travis-ci.org/fooinha/nginx-json-log.svg?branch=master)](https://travis-ci.org/fooinha/nginx-json-log)
+# ngx-json-log  [![Build Status](https://travis-ci.com/fooinha/nginx-json-log.svg?branch=master)](https://travis-ci.com/fooinha/nginx-json-log)
 
 nginx modules for logging in custom json format - aka kasha (🍲)
 
@@ -20,7 +20,7 @@ It supports multiple output destinations with multiple formats for a location.
 
 ### Current version and limitations
 
-Current version released is 0.0.7.
+Current version released is 0.0.8.
 
 Stream logging is only available when using nginx (>= 1.11.2).
 
@@ -79,17 +79,6 @@ The possible output locations are:
 For HTTP logging, if kafka output is used the value from $request_id nginx variable will be used to set kafka's message id.
 
 The $request_id is only available for nginx (>=1.11.0).
-
-
-#### Log HTTP Bad Requests
-
-Nginx will short circuit response if the client sends a Bad Request. In that case, the log handler will not be run.
-
-In order to, capture and log these requests we can define at server level, a format and output location for this requests.
-
-The directives json_err_log_* (same suffixes as the directives for location logging), should be used for this case.
-
-Additionally, the variable $http_json_err_log_req will be set with a base64 encodede string for the data sent from the client, until the limit set by **http_json_log_req_body_limit** is reached.
 
 #### Example Configuration
 
@@ -229,6 +218,50 @@ To ease reading, it's shown here formatted with newlines.
 
  ```
 
+#### Encoding operations
+
+The value of  key of type `string` can be encoded in 3 ways.
+To change the encoding output this should be configured per output key by specifying the encoding after a "|" character.
+For instance for `base64` output the key should be like this `key|base64`
+
+The default encoding is *plain* when no encoding is supplied.
+
+ * plain
+ * base64
+ * hex
+ * hexdump
+
+Format example:
+```yaml
+
+    json_log_format body_log '
+       http.req.body_plain            $http_json_log_req_body;
+       http.req.body_hex|hex          $http_json_log_req_body;
+       http.req.body_hexdump|hexdump  $http_json_log_req_body;
+       http.req.body_base64|base64    $http_json_log_req_body;
+    ';
+```
+
+Note: use a different key name if the output with different encoding is wanted for the same $var .
+
+Response:
+```json
+{
+  "http": {
+    "req": {
+      "body_base64": "Zm9vPWJhcg==",
+      "body_hex": "666f6f3d626172",
+      "body_hexdump": [
+        "66 6f 6f 3d 62 61 72 .. ..  .. .. .. .. .. .. .. |foo=bar         |"
+      ],
+      "body_plain": "foo=bar"
+    }
+  }
+}
+
+```
+
+
 ### Directives
 
 
@@ -331,76 +364,6 @@ The format to use when writing to output destination.
 
 ---
 
-* Syntax: **http_json_log_req_body_limit** _size_;
-* Default: 512
-* Context: http local
-
-Limits the body size to log.
-Argument is a size string. May be 1k or 1M, but avoid this!
-
-
-#### Error Directives
-
-* Syntax: **json_err_log_format** _format_name_ { _format_ } _if_=...;
-* Default: —
-* Context: http main
-
-----
-
-* Syntax: **json_err_log** _location_ _format_name_
-* Default: —
-* Context: http server
-
-----
-
-* Syntax: **json_err_log_kafka_brokers** list of brokers separated by spaces;
-* Default: —
-* Context: http main
-
-----
-
-* Syntax: **json_err_log_kafka_client_id** _id_;
-* Default: nginx
-* Context: http server
-
-----
-
-* Syntax: **json_err_log_kafka_compression** _compression_codec_;
-* Default: snappy
-* Context: http server
-
-----
-
-* Syntax: **json_err_log_kafka_max_retries** _numeric_;
-* Default: 0
-* Context: http main
-
-
-----
-
-* Syntax: **json_err_log_kafka_log_level** _numeric_log_level_;
-* Default: 6
-* Context: http server
-
-----
-
-* Syntax: **json_err_log_kafka_buffer_max_messages** _numeric_;
-* Default: 100000
-* Context: http main
-
-----
-
-* Syntax: **json_err_log_kafka_backoff_ms** _numeric_;
-* Default: 10
-* Context: http main
-
-
-----
-
-* Syntax: **json_err_log_kafka_partition** _partition_;
-* Default: RD_KAFKA_PARTITION_UA
-* Context: http main
-
 
 ### Variables
 
@@ -422,21 +385,17 @@ Example:
 
 #### $http_json_log_req_body;
 
-Log request body encoded as base64.
-It requires proxy_pass configuration at logging location.
+Log request body.
 
 Example:
 
 ```
     "req": {
-        "body": "Zm9v"
+        "body": "foo=bar"
     }
 ```
 
-#### $http_json_log_req_body_hexdump;
-
 Log request body encoded as hexdump array.
-It requires proxy_pass configuration at logging location.
 
 Example:
 
@@ -449,18 +408,14 @@ Example:
 
 #### $http_json_log_resp_headers;
 
-Creates a json object with available response headers.
+Creates a json string with all response headers.
 
 Example:
 
 ```
-        resp": {
-        "headers": {
-          "Last-Modified": "Sat, 01 Apr 2017 13:34:28 GMT",
-          "ETag": "\"58dfac64-12\"",
-          "X-Foo": "bar",
-          "Accept-Ranges": "bytes"
-        }
+    resp": {
+        "headers": "HTTP/1.1 204 No Content\r\nServer: nginx/1.21.2\r\nDate: Mon, 09 Aug 2021 15:24:39 GMT\r\nConnection: keep-alive\r\nX-Foo: bar\r\n\r\n",
+    }
 ```
 
 ### Logging mail proxies authentication
@@ -537,7 +492,6 @@ http {
 **Attention**: The Auth-Pass is not masked in any way, nor removed, so the client's value will be logged.
 
 
-
 ### Build
 
 #### Dependencies
@@ -553,9 +507,11 @@ $ sudo apt-get install libjansson-dev librdkafka-dev
 ```
 
 Build as a common nginx module.
+After configure we need to modify the default order of the modules.
 
 ```bash
 $ ./configure --add-module=/build/ngx_json_log
+$ cat objs/ngx_modules.c | awk '{ sub("\"ngx_http_json_log_module\",", "");  sub("\"ngx_http_header_filter_module\"", "\"ngx_http_json_log_module\", \"ngx_http_header_filter_module\""); print}' > objs/ngx_modules.c.dat && mv objs/ngx_modules.c.dat objs/ngx_modules.c
 $ make && make install
 
 ```
