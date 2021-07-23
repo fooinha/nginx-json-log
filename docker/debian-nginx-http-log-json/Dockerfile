@@ -1,15 +1,15 @@
-FROM debian:sid
+FROM ubuntu:focal
 
 LABEL maintainer "fooinha@gmail.com"
 
 # Build arguments
-ARG DEBIAN_REPO_HOST=httpredir.debian.org
+#ARG DEBIAN_REPO_HOST=httpredir.debian.org
 ARG GIT_LOCATION=https://github.com/fooinha/nginx-json-log.git
 ARG GIT_BRANCH=master
 
 # Mirror to my location
-RUN echo "deb http://${DEBIAN_REPO_HOST}/debian sid main" > /etc/apt/sources.list
-RUN echo "deb-src http://${DEBIAN_REPO_HOST}/debian sid main" >> /etc/apt/sources.list
+#RUN echo "deb http://${DEBIAN_REPO_HOST}/debian sid main" > /etc/apt/sources.list
+#RUN echo "deb-src http://${DEBIAN_REPO_HOST}/debian sid main" >> /etc/apt/sources.list
 
 # Update
 RUN DEBIAN_FRONTEND=noninteractive apt-get update || true
@@ -66,6 +66,7 @@ WORKDIR /build/nginx
 # Configure , make and install
 RUN ./auto/configure --add-module=/build/nginx-json-log --with-debug --with-http_perl_module --with-http_geoip_module --with-mail  --with-stream --with-ld-opt="-Wl,-E"
 
+RUN cat objs/ngx_modules.c | awk '{ sub("\"ngx_http_json_log_module\",", "");  sub("\"ngx_http_header_filter_module\"", "\"ngx_http_json_log_module\", \"ngx_http_header_filter_module\""); print}' > objs/ngx_modules.c.dat && mv objs/ngx_modules.c.dat objs/ngx_modules.c
 RUN make install
 
 # Get test framework

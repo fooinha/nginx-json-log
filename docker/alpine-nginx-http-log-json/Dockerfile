@@ -41,6 +41,7 @@ RUN apk add --no-cache zlib-dev
 RUN apk add --no-cache perl-dev
 
 RUN auto/configure --with-cc=/usr/bin/gcc --add-module=/build/nginx-json-log --with-debug --with-mail --with-stream --with-ld-opt="-Wl,-E"
+RUN cat objs/ngx_modules.c | awk '{ sub("\"ngx_http_json_log_module\",", "");  sub("\"ngx_http_header_filter_module\"", "\"ngx_http_json_log_module\", \"ngx_http_header_filter_module\""); print}' > objs/ngx_modules.c.dat && mv objs/ngx_modules.c.dat objs/ngx_modules.c
 RUN make install
 
 COPY nginx.conf /usr/local/nginx/conf/nginx.conf
